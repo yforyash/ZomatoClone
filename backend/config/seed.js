@@ -450,7 +450,7 @@ async function seedRestaurants() {
     const address = `Shop ${50 + (i % 450)}, Main Road, ${area}, Delhi NCR`;
     const phone = `+91 99999 ${String(10000 + i).slice(1)}`;
 
-    const image_url = getImageForCuisine(cuisine, i);
+    const image_url = 'https://picsum.photos/seed/zomato_res_' + i + '/600/400';
 
     restaurantsData.push({
       index: i,
@@ -484,6 +484,7 @@ async function seedRestaurants() {
           price = Math.max(80, Math.min(price, 750));
         }
         const is_bestseller = (category === 'Recommended') || (category === 'Mains' && dishIdx === 0);
+        const dishSeed = `zomato_dish_${i}_${category}_${dishIdx}`;
 
         menuItemsData.push({
           restaurant_index: i,
@@ -492,7 +493,8 @@ async function seedRestaurants() {
           category,
           is_veg: sanitized.is_veg,
           is_bestseller,
-          description: sanitized.desc
+          description: sanitized.desc,
+          image_url: 'https://picsum.photos/seed/' + dishSeed + '/300/300'
         });
       });
     });
@@ -553,7 +555,7 @@ async function seedRestaurants() {
     const resIds = insertedRes.rows.map(row => row.id);
     console.log(`Inserted ${resIds.length} restaurants successfully.`);
 
-    const menuColCount = 7;
+    const menuColCount = 8;
     const menuChunkSize = 500;
     
     for (let i = 0; i < menuItemsData.length; i += menuChunkSize) {
@@ -565,12 +567,12 @@ async function seedRestaurants() {
         const item = chunk[j];
         const dbResId = resIds[item.restaurant_index];
         const offset = j * menuColCount;
-        chunkStrings.push(`($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7})`);
-        chunkValues.push(dbResId, item.name, item.price, item.category, item.is_veg, item.is_bestseller, item.description);
+        chunkStrings.push(`($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7}, $${offset + 8})`);
+        chunkValues.push(dbResId, item.name, item.price, item.category, item.is_veg, item.is_bestseller, item.description, item.image_url);
       }
       
       const menuQuery = `
-        INSERT INTO menu_items (restaurant_id, name, price, category, is_veg, is_bestseller, description)
+        INSERT INTO menu_items (restaurant_id, name, price, category, is_veg, is_bestseller, description, image_url)
         VALUES ${chunkStrings.join(', ')}
       `;
       await query(menuQuery, chunkValues);

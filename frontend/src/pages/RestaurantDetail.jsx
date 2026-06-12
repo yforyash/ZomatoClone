@@ -183,24 +183,27 @@ export function RestaurantDetail() {
                         {categories[cat].map(item => {
                           const cartItem = cartItems.find(ci => ci.id === item.id);
                           return (
-                            <div key={item.id} className="menu-item-card">
-                              <div className="item-info">
+                            <div key={item.id} className="menu-item-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', padding: '1rem 0', borderBottom: '1px solid var(--border-color)' }}>
+                              <div className="item-info" style={{ flex: 1 }}>
                                 <span className={`item-veg-indicator ${!item.is_veg ? 'nonveg' : ''}`}><span className="item-veg-dot"></span></span>
                                 {item.is_bestseller && <span style={{ background: '#f5a623', color: 'black', fontSize: '0.7rem', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: 700, marginLeft: '0.5rem', verticalAlign: 'middle' }}>★ BESTSELLER</span>}
                                 <h4 className="item-name" style={{ marginTop: '0.3rem' }}>{item.name}</h4>
                                 <p className="item-price">₹{item.price}</p>
                                 <p className="item-desc">{item.description}</p>
                               </div>
-                              <div style={{ position: 'relative' }}>
-                                {cartItem ? (
-                                  <div className="add-cart-btn" style={{ background: 'var(--accent)', color: 'white', display: 'flex', justifyContent: 'space-between', width: '80px' }}>
-                                    <button className="qty-btn" style={{ color: 'white' }} onClick={() => removeFromCart(item.id)}>-</button>
-                                    <span>{cartItem.qty}</span>
-                                    <button className="qty-btn" style={{ color: 'white' }} onClick={() => addToCart(item, restaurant)}>+</button>
-                                  </div>
-                                ) : (
-                                  <button className="add-cart-btn" onClick={() => addToCart(item, restaurant)}>Add +</button>
-                                )}
+                              <div style={{ position: 'relative', width: '96px', height: '96px', flexShrink: 0 }}>
+                                <img src={item.image_url} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }} />
+                                <div style={{ position: 'absolute', bottom: '-8px', left: '50%', transform: 'translateX(-50%)' }}>
+                                  {cartItem ? (
+                                    <div className="add-cart-btn" style={{ background: 'var(--accent)', color: 'white', display: 'flex', justifyContent: 'space-between', width: '72px', margin: 0, boxShadow: '0 4px 8px rgba(0,0,0,0.2)', padding: '0.2rem 0.4rem', fontSize: '0.85rem' }}>
+                                      <button className="qty-btn" style={{ color: 'white' }} onClick={() => removeFromCart(item.id)}>-</button>
+                                      <span>{cartItem.qty}</span>
+                                      <button className="qty-btn" style={{ color: 'white' }} onClick={() => addToCart(item, restaurant)}>+</button>
+                                    </div>
+                                  ) : (
+                                    <button className="add-cart-btn" style={{ margin: 0, boxShadow: '0 4px 8px rgba(0,0,0,0.2)', padding: '0.2rem 0.6rem', fontSize: '0.85rem' }} onClick={() => addToCart(item, restaurant)}>Add +</button>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           );
