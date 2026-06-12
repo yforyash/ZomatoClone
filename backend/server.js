@@ -1,0 +1,134 @@
+const express = require('express');
+const cors = require('cors');
+const { query } = require('./config/db');
+const { seedRestaurants } = require('./config/seed');
+require('dotenv').config();
+
+const app = express();
+const PORT = process.env.PORT || 5001;
+
+// 1. MIDDLEWARE
+app.use(cors());
+app.use(express.json());
+
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.url}`);
+  next();
+});
+
+// 2. DATABASE INITIALIZATION & SCHEMA CREATION
+async function initDatabase() {
+  console.log('Initializing PostgreSQL database...');
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(100) UNIQUE NOT NULL,
+        password_hash VARCHAR(100) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await query(`
+      CREATE TABLE IF NOT EXISTS password_resets (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(100) NOT NULL REFERENCES users(email) ON DELETE CASCADE,
+        token VARCHAR(100) UNIQUE NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await query(`
+      CREATE TABLE IF NOT EXISTS restaurants (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        cuisine VARCHAR(100) NOT NULL,
+        rating NUMERIC(2, 1) DEFAULT 0,
+        rating_count INTEGER DEFAULT 0,
+        cost_for_two INTEGER DEFAULT 0,
+        delivery_time INTEGER DEFAULT 30,
+        image_url TEXT,
+        is_pure_veg BOOLEAN DEFAULT FALSE,
+        latitude NUMERIC(9, 6),
+        longitude NUMERIC(9, 6),
+        address VARCHAR(255),
+        phone VARCHAR(20)
+      );
+    `);
+
+    await query(`
+      CREATE TABLE IF NOT EXISTS menu_items (
+        id SERIAL PRIMARY KEY,
+        restaurant_id INTEGER REFERENCES restaurants(id) ON DELETE CASCADE,
+        name VARCHAR(100) NOT NULL,
+        price NUMERIC(10, 2) NOT NULL,
+        category VARCHAR(50) NOT NULL,
+        is_veg BOOLEAN DEFAULT TRUE,
+        is_bestseller BOOLEAN DEFAULT FALSE,
+        image_url TEXT,
+        description TEXT
+      );
+    `);
+
+    await query(`
+      CREATE TABLE IF NOT EXISTS reviews (
+        id SERIAL PRIMARY KEY,
+        restaurant_id INTEGER REFERENCES restaurants(id) ON DELETE CASCADE,
+        reviewer_name VARCHAR(100) NOT NULL,
+        rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+        comment TEXT,
+        tags VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await query(`
+      CREATE TABLE IF NOT EXISTS orders (
+        id SERIAL PRIMARY KEY,
+        items JSONB NOT NULL,
+        total_price NUMERIC(10, 2) NOT NULL,
+        status VARCHAR(50) DEFAULT 'Placed',
+        address VARCHAR(255),
+        latitude NUMERIC(9, 6),
+        longitude NUMERIC(9, 6),
+        payment_method VARCHAR(50) DEFAULT 'COD',
+        payment_status VARCHAR(50) DEFAULT 'Pending',
+        customer_name VARCHAR(100),
+        customer_phone VARCHAR(20),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    console.log('Database tables verified successfully.');
+
+    // Seed default restaurants if table is empty
+    const resCheck = await query('SELECT COUNT(*) FROM restaurants');
+    if (parseInt(resCheck.rows[0].count) === 0) {
+      console.log('Seeding default database records...');
+      await seedRestaurants();
+    }
+  } catch (error) {
+    console.error('Error during database initialization:', error.message);
+    console.log('\n--> IMPORTANT: Make sure you have created the database "Zomato-clone" in pgAdmin4 and updated backend/.env');
+  }
+}
+
+// 3. API ENDPOINTS MOUNTING
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/restaurants', require('./routes/restaurants'));
+app.use('/api/reviews', require('./routes/reviews'));
+app.use('/api/orders', require('./routes/orders'));
+
+// 4. SERVER LISTEN
+async function startServer() {
+  await initDatabase();
+  app.listen(PORT, () => {
+    console.log(`\n===================================================`);
+    console.log(`🚀 ZOMATO CLONE BACKEND RUNNING ON PORT ${PORT}`);
+    console.log(`===================================================\n`);
+  });
+}
+startServer();

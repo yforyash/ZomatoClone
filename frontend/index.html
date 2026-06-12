@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zomato Clone - Premium Food Ordering App</title>
+    <script>
+      window.addEventListener('error', function(event) {
+        // Wait for DOM to load if needed
+        setTimeout(function() {
+          const errorDiv = document.createElement('div');
+          errorDiv.id = 'debug-error-screen';
+          errorDiv.style.position = 'fixed';
+          errorDiv.style.top = '0';
+          errorDiv.style.left = '0';
+          errorDiv.style.width = '100vw';
+          errorDiv.style.height = '100vh';
+          errorDiv.style.background = '#ffffff';
+          errorDiv.style.color = '#e23744';
+          errorDiv.style.padding = '40px';
+          errorDiv.style.zIndex = '999999';
+          errorDiv.style.overflow = 'auto';
+          errorDiv.style.fontFamily = 'monospace';
+          errorDiv.style.boxSizing = 'border-box';
+          errorDiv.innerHTML = '<h1 style="margin-top:0;">🚨 Runtime JavaScript Error</h1>' +
+            '<p style="font-size:16px;"><strong>Error Message:</strong> ' + event.message + '</p>' +
+            '<p style="font-size:14px;color:#666;"><strong>File:</strong> ' + event.filename + ' | <strong>Line:</strong> ' + event.lineno + ':' + event.colno + '</p>' +
+            '<pre style="background:#f5f5f7;padding:20px;border-radius:8px;border:1px solid #ddd;color:#333;font-size:13px;line-height:1.5;overflow-x:auto;">' + 
+            (event.error ? event.error.stack : 'No stack trace available') + '</pre>';
+          document.body.appendChild(errorDiv);
+        }, 100);
+      });
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

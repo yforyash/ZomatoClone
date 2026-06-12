@@ -1,0 +1,275 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useCart } from '../context/CartContext';
+import { MapPin, Star, Phone, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { Formik, Form, Field, ErrorMessage } from 'formik';
+import * as Yup from 'yup';
+import { UniversalMap } from '../components/UniversalMap';
+
+function ReviewForm({ restaurantId, onReviewSubmitted }) {
+  const [tags, setTags] = useState([]);
+  const [success, setSuccess] = useState(false);
+
+  const availableTags = ['Delicious Food', 'Great Packaging', 'Super Fast Delivery', 'Friendly Staff', 'Value for Money'];
+  const toggleTag = (tag) => setTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+
+  return (
+    <div className="review-form-container">
+      <h3>Rate your experience</h3>
+      {success && <div className="tracking-status-banner" style={{ background: 'rgba(36, 150, 63, 0.1)', color: 'var(--veg-color)', marginBottom: '1rem' }}><CheckCircle2 size={16} /> Review posted!</div>}
+
+      <Formik
+        initialValues={{ reviewer_name: '', rating: 5, comment: '' }}
+        validationSchema={Yup.object({
+          reviewer_name: Yup.string().required('Required'),
+          comment: Yup.string().min(5, 'Minimum 5 characters').required('Required'),
+        })}
+        onSubmit={async (values, { resetForm }) => {
+          try {
+            await fetch(`http://localhost:5001/api/reviews/${restaurantId}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ...values, tags: tags.join(',') }),
+            });
+            setSuccess(true);
+            setTags([]);
+            resetForm();
+            onReviewSubmitted();
+            setTimeout(() => setSuccess(false), 3000);
+          } catch (e) {
+            alert('Error posting review');
+          }
+        }}
+      >
+        {({ values, setFieldValue }) => (
+          <Form>
+            <div className="form-group">
+              <label className="form-label">Your Name</label>
+              <Field name="reviewer_name" className="form-input" />
+              <ErrorMessage name="reviewer_name" component="div" className="form-error" />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Rating</label>
+              <div style={{ display: 'flex', gap: '0.3rem' }}>
+                {[1,2,3,4,5].map(star => (
+                  <button key={star} type="button" className={`star-btn ${values.rating >= star ? 'active' : ''}`} onClick={() => setFieldValue('rating', star)}>
+                    <Star size={20} fill={values.rating >= star ? 'var(--rating-yellow)' : 'none'} />
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Review Tags</label>
+              <div className="review-tags">
+                {availableTags.map(t => (
+                  <button key={t} type="button" onClick={() => toggleTag(t)} className={`filter-btn ${tags.includes(t) ? 'active' : ''}`}>{t}</button>
+                ))}
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Comment</label>
+              <Field name="comment" as="textarea" className="form-input" rows="3" />
+              <ErrorMessage name="comment" component="div" className="form-error" />
+            </div>
+            <button type="submit" className="checkout-btn">Submit Review</button>
+          </Form>
+        )}
+      </Formik>
+    </div>
+  );
+}
+
+export function RestaurantDetail() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { addToCart, removeFromCart, cartItems, cartTotal } = useCart();
+
+  const [restaurant, setRestaurant] = useState(null);
+  const [menu, setMenu] = useState([]);
+  const [reviews, setReviews] = useState([]);
+  const [tab, setTab] = useState('menu'); // menu, overview, reviews
+  const [loading, setLoading] = useState(true);
+
+  const fetchDetails = async () => {
+    try {
+      const resData = await (await fetch(`http://localhost:5001/api/restaurants/${id}`)).json();
+      setRestaurant(resData);
+      const mData = await (await fetch(`http://localhost:5001/api/restaurants/${id}/menu`)).json();
+      setMenu(Array.isArray(mData) ? mData : []);
+      await fetchReviews();
+    } catch (e) {
+      navigate('/');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchReviews = async () => {
+    try {
+      const revs = await (await fetch(`http://localhost:5001/api/reviews/${id}`)).json();
+      setReviews(Array.isArray(revs) ? revs : []);
+    } catch (e) {
+      setReviews([]);
+    }
+  };
+
+  useEffect(() => { fetchDetails(); }, [id]);
+
+  if (loading) return <div className="spinner-container"><div className="spinner"></div></div>;
+
+  // Group menu by categories
+  const categories = menu.reduce((acc, item) => {
+    if (!acc[item.category]) acc[item.category] = [];
+    acc[item.category].push(item);
+    return acc;
+  }, {});
+
+  const scrollToCategory = (catName) => {
+    const el = document.getElementById(`cat-${catName}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  return (
+    <div>
+      <div className="restaurant-hero" style={{ backgroundImage: `url(${restaurant.image_url})` }}>
+        <div className="restaurant-hero-overlay"></div>
+        <div className="restaurant-hero-content">
+          <div>
+            <h1 className="restaurant-hero-title">{restaurant.name}</h1>
+            <p className="restaurant-hero-cuisines">{restaurant.cuisine}</p>
+            <p className="restaurant-hero-address"><MapPin size={12} style={{ display: 'inline', marginRight: '0.3rem' }} />{restaurant.address}</p>
+          </div>
+          <div className="restaurant-rating-stats">
+            <div className="rating-stat-box">
+              <div className="rating-stat-value">{parseFloat(restaurant.rating).toFixed(1)} <Star size={12} fill="var(--rating-yellow)" /></div>
+              <div className="rating-stat-label">{restaurant.rating_count} Reviews</div>
+            </div>
+            <div className="rating-stat-box">
+              <div className="rating-stat-value">₹{restaurant.cost_for_two}</div>
+              <div className="rating-stat-label">Cost for Two</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="container">
+        <div className="tabs-navigation">
+          <button className={`tab-btn ${tab === 'menu' ? 'active' : ''}`} onClick={() => setTab('menu')}>Online Menu</button>
+          <button className={`tab-btn ${tab === 'overview' ? 'active' : ''}`} onClick={() => setTab('overview')}>Overview</button>
+          <button className={`tab-btn ${tab === 'reviews' ? 'active' : ''}`} onClick={() => setTab('reviews')}>Reviews</button>
+        </div>
+
+        <div className="detail-layout">
+          
+          <div className="detail-main-content" style={{ display: 'flex', gap: '1.5rem' }}>
+            
+            {/* Category sidebar inside menu tab */}
+            {tab === 'menu' && Object.keys(categories).length > 0 && (
+              <div style={{ width: '150px', position: 'sticky', top: '100px', height: 'fit-content', display: 'flex', flexDirection: 'column', gap: '0.6rem', borderRight: '1px solid var(--border-color)', paddingRight: '0.8rem' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>CATEGORIES</span>
+                {Object.keys(categories).map(cat => (
+                  <button key={cat} onClick={() => scrollToCategory(cat)} className="filter-btn" style={{ border: 'none', background: 'transparent', textAlign: 'left', padding: '0.3rem 0', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div style={{ flex: 1 }}>
+              {tab === 'menu' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                  {Object.keys(categories).map(cat => (
+                    <div key={cat} id={`cat-${cat}`}>
+                      <h3 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.4rem', marginBottom: '1rem', color: 'var(--accent)' }}>{cat}</h3>
+                      <div className="menu-list">
+                        {categories[cat].map(item => {
+                          const cartItem = cartItems.find(ci => ci.id === item.id);
+                          return (
+                            <div key={item.id} className="menu-item-card">
+                              <div className="item-info">
+                                <span className={`item-veg-indicator ${!item.is_veg ? 'nonveg' : ''}`}><span className="item-veg-dot"></span></span>
+                                {item.is_bestseller && <span style={{ background: '#f5a623', color: 'black', fontSize: '0.7rem', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: 700, marginLeft: '0.5rem', verticalAlign: 'middle' }}>★ BESTSELLER</span>}
+                                <h4 className="item-name" style={{ marginTop: '0.3rem' }}>{item.name}</h4>
+                                <p className="item-price">₹{item.price}</p>
+                                <p className="item-desc">{item.description}</p>
+                              </div>
+                              <div style={{ position: 'relative' }}>
+                                {cartItem ? (
+                                  <div className="add-cart-btn" style={{ background: 'var(--accent)', color: 'white', display: 'flex', justifyContent: 'space-between', width: '80px' }}>
+                                    <button className="qty-btn" style={{ color: 'white' }} onClick={() => removeFromCart(item.id)}>-</button>
+                                    <span>{cartItem.qty}</span>
+                                    <button className="qty-btn" style={{ color: 'white' }} onClick={() => addToCart(item, restaurant)}>+</button>
+                                  </div>
+                                ) : (
+                                  <button className="add-cart-btn" onClick={() => addToCart(item, restaurant)}>Add +</button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {tab === 'overview' && (
+                <div>
+                  <h3 style={{ marginBottom: '0.8rem' }}>About this kitchen</h3>
+                  <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>Elegantly serving local dishes prepared fresh on order. Ideal for cozy dining experiences at home.</p>
+                  <p style={{ fontWeight: 600, marginBottom: '1.5rem' }}><Phone size={14} style={{ display: 'inline', marginRight: '0.3rem' }} /> Phone: {restaurant.phone}</p>
+                  <div style={{ height: '300px', borderRadius: '12px', overflow: 'hidden' }}>
+                    <UniversalMap center={[parseFloat(restaurant.latitude), parseFloat(restaurant.longitude)]} markerTitle={restaurant.name} />
+                  </div>
+                </div>
+              )}
+
+              {tab === 'reviews' && (
+                <div className="reviews-section">
+                  <ReviewForm restaurantId={restaurant.id} onReviewSubmitted={fetchDetails} />
+                  <h3 style={{ margin: '1.5rem 0 0.8rem' }}>Customer Reviews</h3>
+                  {reviews.map(rev => (
+                    <div key={rev.id} className="review-card" style={{ marginBottom: '1rem' }}>
+                      <div className="review-card-header">
+                        <h4>{rev.reviewer_name}</h4>
+                        <span className="rating-badge">{rev.rating} <Star size={10} fill="white" /></span>
+                      </div>
+                      {rev.tags && <div className="review-tags">{rev.tags.split(',').map(t => <span key={t} className="review-tag">{t}</span>)}</div>}
+                      <p className="review-comment">"{rev.comment}"</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+          </div>
+
+          <div className="detail-sidebar">
+            <div className="sidebar-panel">
+              <h3 className="panel-title">Basket</h3>
+              {cartItems.length === 0 ? (
+                <p style={{ color: 'var(--text-muted)', textAlign: 'center' }}>Empty Basket</p>
+              ) : (
+                <>
+                  <div className="cart-items-list">
+                    {cartItems.map(item => (
+                      <div key={item.id} className="cart-item-row">
+                        <div>{item.name} x {item.qty}</div>
+                        <div>₹{item.price * item.qty}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="cart-summary">
+                    <div className="summary-row total"><span>Total</span><span>₹{cartTotal + 40}</span></div>
+                    <button className="checkout-btn" onClick={() => navigate('/checkout')}>Proceed to Pay</button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+}
