@@ -2,22 +2,16 @@ const express = require('express');
 const cors = require('cors');
 const { query } = require('./config/db');
 const { seedRestaurants } = require('./config/seed');
+const requestLogger = require('./middlewares/logger');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// 1. MIDDLEWARE
 app.use(cors());
 app.use(express.json());
+app.use(requestLogger);
 
-// Request logging middleware
-app.use((req, res, next) => {
-  console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.url}`);
-  next();
-});
-
-// 2. DATABASE INITIALIZATION & SCHEMA CREATION
 async function initDatabase() {
   console.log('Initializing PostgreSQL database...');
   try {
@@ -104,7 +98,6 @@ async function initDatabase() {
 
     console.log('Database tables verified successfully.');
 
-    // Seed default restaurants if table is empty
     const resCheck = await query('SELECT COUNT(*) FROM restaurants');
     if (parseInt(resCheck.rows[0].count) === 0) {
       console.log('Seeding default database records...');
@@ -112,17 +105,14 @@ async function initDatabase() {
     }
   } catch (error) {
     console.error('Error during database initialization:', error.message);
-    console.log('\n--> IMPORTANT: Make sure you have created the database "Zomato-clone" in pgAdmin4 and updated backend/.env');
   }
 }
 
-// 3. API ENDPOINTS MOUNTING
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/restaurants', require('./routes/restaurants'));
 app.use('/api/reviews', require('./routes/reviews'));
 app.use('/api/orders', require('./routes/orders'));
 
-// 4. SERVER LISTEN
 async function startServer() {
   await initDatabase();
   app.listen(PORT, () => {

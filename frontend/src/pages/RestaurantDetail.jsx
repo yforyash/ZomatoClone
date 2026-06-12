@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import { MapPin, Star, Phone, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { MapPin, Star, Phone, CheckCircle2 } from 'lucide-react';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
 import { UniversalMap } from '../components/UniversalMap';
@@ -87,7 +87,7 @@ export function RestaurantDetail() {
   const [restaurant, setRestaurant] = useState(null);
   const [menu, setMenu] = useState([]);
   const [reviews, setReviews] = useState([]);
-  const [tab, setTab] = useState('menu'); // menu, overview, reviews
+  const [tab, setTab] = useState('menu');
   const [loading, setLoading] = useState(true);
 
   const fetchDetails = async () => {
@@ -117,7 +117,6 @@ export function RestaurantDetail() {
 
   if (loading) return <div className="spinner-container"><div className="spinner"></div></div>;
 
-  // Group menu by categories
   const categories = menu.reduce((acc, item) => {
     if (!acc[item.category]) acc[item.category] = [];
     acc[item.category].push(item);
@@ -163,7 +162,6 @@ export function RestaurantDetail() {
           
           <div className="detail-main-content" style={{ display: 'flex', gap: '1.5rem' }}>
             
-            {/* Category sidebar inside menu tab */}
             {tab === 'menu' && Object.keys(categories).length > 0 && (
               <div style={{ width: '150px', position: 'sticky', top: '100px', height: 'fit-content', display: 'flex', flexDirection: 'column', gap: '0.6rem', borderRight: '1px solid var(--border-color)', paddingRight: '0.8rem' }}>
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>CATEGORIES</span>

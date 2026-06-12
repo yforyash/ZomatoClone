@@ -45,25 +45,25 @@ async function seedRestaurants() {
   ];
 
   const UNSPLASH_IMAGES = [
-    'https://images.unsplash.com/photo-1585938338392-50a59970d8ee?w=800&auto=format&fit=crop&q=60', // curry
-    'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800&auto=format&fit=crop&q=60', // pizza
-    'https://images.unsplash.com/photo-1562436260-8c9216eeb703?w=800&auto=format&fit=crop&q=60', // noodles
-    'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=800&auto=format&fit=crop&q=60', // donuts
-    'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&auto=format&fit=crop&q=60', // burger
-    'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=800&auto=format&fit=crop&q=60', // dosa
-    'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=60', // biryani
-    'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&auto=format&fit=crop&q=60', // salad
-    'https://images.unsplash.com/photo-1593560708920-61dd98c46a4e?w=800&auto=format&fit=crop&q=60', // garlic bread
-    'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?w=800&auto=format&fit=crop&q=60', // tandoori
-    'https://images.unsplash.com/photo-1587314168485-3236d6710814?w=800&auto=format&fit=crop&q=60', // waffles
-    'https://images.unsplash.com/photo-1601050690597-df056fb4ce78?w=800&auto=format&fit=crop&q=60', // samosa/chutney
-    'https://images.unsplash.com/photo-1540648639573-8c848de23f0a?w=800&auto=format&fit=crop&q=60', // soup/chuan
-    'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=800&auto=format&fit=crop&q=60', // cafe
-    'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800&auto=format&fit=crop&q=60', // sushi
-    'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=800&auto=format&fit=crop&q=60', // tacos
-    'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=800&auto=format&fit=crop&q=60', // kebab
-    'https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?w=800&auto=format&fit=crop&q=60', // dessert
-    'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=800&auto=format&fit=crop&q=60'  // idli
+    'https://images.unsplash.com/photo-1585938338392-50a59970d8ee?w=800&auto=format&fit=crop&q=60',
+    'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800&auto=format&fit=crop&q=60',
+    'https://images.unsplash.com/photo-1562436260-8c9216eeb703?w=800&auto=format&fit=crop&q=60',
+    'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=800&auto=format&fit=crop&q=60',
+    'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&auto=format&fit=crop&q=60',
+    'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=800&auto=format&fit=crop&q=60',
+    'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=60',
+    'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&auto=format&fit=crop&q=60',
+    'https://images.unsplash.com/photo-1593560708920-61dd98c46a4e?w=800&auto=format&fit=crop&q=60',
+    'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?w=800&auto=format&fit=crop&q=60',
+    'https://images.unsplash.com/photo-1587314168485-3236d6710814?w=800&auto=format&fit=crop&q=60',
+    'https://images.unsplash.com/photo-1601050690597-df056fb4ce78?w=800&auto=format&fit=crop&q=60',
+    'https://images.unsplash.com/photo-1540648639573-8c848de23f0a?w=800&auto=format&fit=crop&q=60',
+    'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=800&auto=format&fit=crop&q=60',
+    'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800&auto=format&fit=crop&q=60',
+    'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=800&auto=format&fit=crop&q=60',
+    'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=800&auto=format&fit=crop&q=60',
+    'https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?w=800&auto=format&fit=crop&q=60',
+    'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=800&auto=format&fit=crop&q=60'
   ];
 
   const MENU_TEMPLATES = {
@@ -143,7 +143,7 @@ async function seedRestaurants() {
       ],
       Starters: [
         { name: 'Veg Spring Rolls (4 Pcs)', price: 180, is_veg: true, desc: 'Crispy golden rolls filled with seasoned shredded veg.' },
-        { name: 'Chicken Steamed Dimsums', price: 240, is_veg: false, desc: 'Steamed dumplings filled with juicy minced chicken.' },
+        { name: 'Chicken Steamed Dimsums', price: 240, is_veg: false, desc: 'Dimplings filled with juicy minced chicken.' },
         { name: 'Honey Chilli Potato', price: 199, is_veg: true, desc: 'Crispy potato fingers glazed in honey and hot chilli.' },
         { name: 'Crispy Corn Salt & Pepper', price: 190, is_veg: true, desc: 'Fried corn kernels tossed with onions and white pepper.' }
       ],
@@ -219,7 +219,7 @@ async function seedRestaurants() {
         { name: 'Triple Chocolate Pancakes', price: 220, is_veg: true, desc: 'Fluffy pancake stack layered with dark, milk and white chocolate.' },
         { name: 'Red Velvet Waffle Special', price: 230, is_veg: true, desc: 'Red velvet waffle drizzled with cream cheese frosting.' },
         { name: 'Nutella Banana Crepe', price: 199, is_veg: true, desc: 'Thin French crepe filled with Nutella spread and fresh banana slices.' },
-        { name: 'Fruit & Cream Waffle', price: 220, is_veg: true, desc: 'Crispy waffle topped with fresh whipped cream and seasonal berries.' },
+        { name: 'Fruit & Cream Waffle', price: 220, is_veg: true, desc: 'Waffle topped with fresh whipped cream and seasonal berries.' },
         { name: 'Vanilla Butterscotch Pancake', price: 190, is_veg: true, desc: 'Pancakes served with warm butterscotch syrup.' },
         { name: 'Choco Chip Waffle Sundae', price: 240, is_veg: true, desc: 'Waffle topped with chocolate ice cream and hot fudge.' }
       ],
@@ -230,7 +230,7 @@ async function seedRestaurants() {
       ],
       Desserts: [
         { name: 'Death By Chocolate Sundae', price: 260, is_veg: true, desc: 'Scoops of chocolate ice cream, brownie chunks, nuts and chocolate sauce.' },
-        { name: 'Double Strawberry Scoop', price: 120, is_veg: true, desc: 'Two scoops of creamy strawberry ice cream.' }
+        { name: 'Double Strawberry Scoop', price: 120, is_veg: true, desc: 'Two scoops of strawberry ice cream.' }
       ],
       Beverages: [
         { name: 'Thick Chocolate Shake', price: 160, is_veg: true, desc: 'Milkshake blended with dark cocoa and chocolate syrup.' },
@@ -314,7 +314,7 @@ async function seedRestaurants() {
       Starters: [
         { name: 'Creamy Mushroom Soup', price: 160, is_veg: true, desc: 'Thick soup made of wild mushrooms, herbs and fresh cream.' },
         { name: 'Bruschetta Basil Tomato', price: 180, is_veg: true, desc: 'Toasted French bread topped with chopped tomatoes, garlic and olive oil.' },
-        { name: 'Hummus & Pita Bread Platter', price: 240, is_veg: true, desc: 'Creamy chickpea puree served with warm soft pita bread.' },
+        { name: 'Hummus & Pita Bread Platter', price: 240, is_veg: true, desc: 'Creamy chickpea puree served with warm pita bread.' },
         { name: 'Grilled Tofu Skewers', price: 210, is_veg: true, desc: 'Tofu cubes marinated in soy-ginger glaze and grilled.' }
       ],
       Mains: [
@@ -332,7 +332,7 @@ async function seedRestaurants() {
       ],
       Desserts: [
         { name: 'Sugar Free Fruit Custard', price: 150, is_veg: true, desc: 'Chilled milk custard filled with apple, banana and pomegranate.' },
-        { name: 'Greek Yogurt Honey Bowl', price: 160, is_veg: true, desc: 'Thick Greek yogurt topped with honey and toasted walnuts.' }
+        { name: 'Greek Yogurt Honey Bowl', price: 160, is_veg: true, desc: 'Thick Greek yogurt topped with honey and walnuts.' }
       ],
       Beverages: [
         { name: 'Fresh Watermelon Juice', price: 120, is_veg: true, desc: 'Cold pressed fresh watermelon juice, sugar free.' },
@@ -532,8 +532,6 @@ async function seedRestaurants() {
   try {
     console.log(`Generated ${restaurantsData.length} restaurants, ${menuItemsData.length} dishes, and ${reviewsData.length} reviews in memory.`);
 
-    // Bulk Insert Restaurants
-    console.log('Inserting restaurants into DB in one bulk query...');
     const resColCount = 12;
     const resChunks = [];
     const resValues = [];
@@ -555,8 +553,6 @@ async function seedRestaurants() {
     const resIds = insertedRes.rows.map(row => row.id);
     console.log(`Inserted ${resIds.length} restaurants successfully.`);
 
-    // Bulk Insert Menu Items in Chunks of 500
-    console.log('Inserting menu items in batches...');
     const menuColCount = 7;
     const menuChunkSize = 500;
     
@@ -581,8 +577,6 @@ async function seedRestaurants() {
     }
     console.log(`Successfully bulk-inserted ${menuItemsData.length} menu items.`);
 
-    // Bulk Insert Reviews in Chunks of 500
-    console.log('Inserting reviews in batches...');
     const revColCount = 5;
     const revChunkSize = 500;
     

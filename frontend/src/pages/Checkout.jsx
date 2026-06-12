@@ -4,7 +4,7 @@ import { useCart } from '../context/CartContext';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
 import confetti from 'canvas-confetti';
-import { Truck, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { Truck, CheckCircle2 } from 'lucide-react';
 import { UniversalMap } from '../components/UniversalMap';
 
 const CheckoutSchema = Yup.object().shape({
@@ -22,7 +22,7 @@ export function Checkout() {
   const { cartItems, activeRestaurant, cartTotal, clearCart } = useCart();
 
   const [coords, setCoords] = useState([28.6139, 77.2090]);
-  const [step, setStep] = useState(1); // 1: Form, 2: Gateway Loader, 3: SSE live map
+  const [step, setStep] = useState(1);
   const [orderId, setOrderId] = useState(null);
   const [gatewayMsg, setGatewayMsg] = useState('');
   const [status, setStatus] = useState('');

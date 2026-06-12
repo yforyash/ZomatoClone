@@ -3,10 +3,10 @@ import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaf
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// Fix Leaflet default marker icons
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2x,
@@ -31,7 +31,6 @@ export function UniversalMap({ center, markerTitle, onMapClick, riderPos, restPo
   const [googleLoaded, setGoogleLoaded] = useState(false);
   const mapRef = useRef(null);
 
-  // Dynamic script loader for Google Maps
   useEffect(() => {
     if (apiKey) {
       const scriptId = 'google-maps-api-script';
@@ -51,7 +50,6 @@ export function UniversalMap({ center, markerTitle, onMapClick, riderPos, restPo
     }
   }, [apiKey]);
 
-  // Google Map Renderer
   useEffect(() => {
     if (googleLoaded && mapRef.current && window.google) {
       try {
@@ -67,14 +65,12 @@ export function UniversalMap({ center, markerTitle, onMapClick, riderPos, restPo
           ]
         });
 
-        // Add User Marker
         new window.google.maps.Marker({
           position: { lat: center[0], lng: center[1] },
           map,
           title: markerTitle || 'Your Location',
         });
 
-        // Add Restaurant Marker
         if (restPos) {
           new window.google.maps.Marker({
             position: { lat: restPos[0], lng: restPos[1] },
@@ -84,7 +80,6 @@ export function UniversalMap({ center, markerTitle, onMapClick, riderPos, restPo
           });
         }
 
-        // Add Rider Marker
         if (riderPos) {
           new window.google.maps.Marker({
             position: { lat: riderPos[0], lng: riderPos[1] },
@@ -113,7 +108,6 @@ export function UniversalMap({ center, markerTitle, onMapClick, riderPos, restPo
 
   return (
     <div style={{ position: 'relative', height: '100%', width: '100%' }}>
-      {/* Key Input overlay */}
       <div style={{ position: 'absolute', top: '10px', left: '10px', zIndex: '999', background: 'var(--bg-glass)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '0.4rem 0.6rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
         <input 
           type="password" 

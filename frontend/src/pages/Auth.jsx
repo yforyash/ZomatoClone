@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Formik, Form, Field, ErrorMessage } from 'formik';
-import * as Yup from 'yup';
+import { Formik, Form, Field } from 'formik';
 import CryptoJS from 'crypto-js';
 import { ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { loginUser, registerUser, forgotPassword, resetPassword } from '../services/api';
 
 export function Auth() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [mode, setMode] = useState('login'); // login, register, forgot, reset
+  const [mode, setMode] = useState('login');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -36,14 +36,8 @@ export function Auth() {
               onSubmit={async (values, { setSubmitting }) => {
                 setError('');
                 try {
-                  const res = await fetch('http://localhost:5001/api/auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: values.email, passwordHash: hash(values.password) }),
-                  });
-                  const data = await res.json();
-                  if (!res.ok) throw new Error(data.error);
-                  localStorage.setItem('z_user', JSON.stringify(data));
+                  const user = await loginUser(values.email, hash(values.password));
+                  localStorage.setItem('z_user', JSON.stringify(user));
                   navigate('/');
                   window.location.reload();
                 } catch (e) { setError(e.message); }
@@ -68,13 +62,7 @@ export function Auth() {
               onSubmit={async (values, { setSubmitting }) => {
                 setError('');
                 try {
-                  const res = await fetch('http://localhost:5001/api/auth/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: values.name, email: values.email, passwordHash: hash(values.password) }),
-                  });
-                  const data = await res.json();
-                  if (!res.ok) throw new Error(data.error);
+                  await registerUser(values.name, values.email, hash(values.password));
                   setSuccess('Registration successful! Please login.');
                   setMode('login');
                 } catch (e) { setError(e.message); }
@@ -100,14 +88,8 @@ export function Auth() {
               onSubmit={async (values, { setSubmitting }) => {
                 setError('');
                 try {
-                  const res = await fetch('http://localhost:5001/api/auth/forgot-password', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: values.email }),
-                  });
-                  const data = await res.json();
-                  if (!res.ok) throw new Error(data.error);
-                  setSuccess(data.message);
+                  const response = await forgotPassword(values.email);
+                  setSuccess(response.message);
                 } catch (e) { setError(e.message); }
                 setSubmitting(false);
               }}
@@ -129,13 +111,7 @@ export function Auth() {
               onSubmit={async (values, { setSubmitting }) => {
                 setError('');
                 try {
-                  const res = await fetch('http://localhost:5001/api/auth/reset-password', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, token, newPasswordHash: hash(values.password) }),
-                  });
-                  const data = await res.json();
-                  if (!res.ok) throw new Error(data.error);
+                  await resetPassword(email, token, hash(values.password));
                   setSuccess('Password updated successfully! Redirecting...');
                   setTimeout(() => {
                     navigate('/login');
