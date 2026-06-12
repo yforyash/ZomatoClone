@@ -602,6 +602,10 @@ async function seedRestaurants() {
       await query(revQuery, chunkValues);
     }
     console.log(`Successfully bulk-inserted ${reviewsData.length} reviews.`);
+    await query(
+      "INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) ON CONFLICT (email) DO NOTHING",
+      ['Yash Agarwal', 'yashagarwal1705@gmail.com', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9']
+    );
     console.log('Database seeding process completed successfully!');
   } catch (error) {
     console.error('Error seeding database:', error.message);
