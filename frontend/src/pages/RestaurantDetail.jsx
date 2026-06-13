@@ -26,7 +26,8 @@ function ReviewForm({ restaurantId, onReviewSubmitted }) {
         })}
         onSubmit={async (values, { resetForm }) => {
           try {
-            await fetch(`http://localhost:5001/api/reviews/${restaurantId}`, {
+            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+            await fetch(`${API_URL}/api/reviews/${restaurantId}`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ ...values, tags: tags.join(',') }),
@@ -92,9 +93,10 @@ export function RestaurantDetail() {
 
   const fetchDetails = async () => {
     try {
-      const resData = await (await fetch(`http://localhost:5001/api/restaurants/${id}`)).json();
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+      const resData = await (await fetch(`${API_URL}/api/restaurants/${id}`)).json();
       setRestaurant(resData);
-      const mData = await (await fetch(`http://localhost:5001/api/restaurants/${id}/menu`)).json();
+      const mData = await (await fetch(`${API_URL}/api/restaurants/${id}/menu`)).json();
       setMenu(Array.isArray(mData) ? mData : []);
       await fetchReviews();
     } catch (e) {
@@ -106,7 +108,8 @@ export function RestaurantDetail() {
 
   const fetchReviews = async () => {
     try {
-      const revs = await (await fetch(`http://localhost:5001/api/reviews/${id}`)).json();
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+      const revs = await (await fetch(`${API_URL}/api/reviews/${id}`)).json();
       setReviews(Array.isArray(revs) ? revs : []);
     } catch (e) {
       setReviews([]);

@@ -28,7 +28,8 @@ export function Home() {
     if (isReset) setLoading(true);
     else setLoadingMore(true);
     try {
-      let url = `http://localhost:5001/api/restaurants?page=${pNum}&limit=6`;
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+      let url = `${API_URL}/api/restaurants?page=${pNum}&limit=6`;
       if (search) url += `&search=${encodeURIComponent(search)}`;
       if (veg) url += `&veg=true`;
 

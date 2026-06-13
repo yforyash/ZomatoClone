@@ -44,27 +44,156 @@ async function seedRestaurants() {
     'Sachin T.', 'Alia B.', 'Ranbir K.', 'Shah Rukh K.', 'Priyanka C.'
   ];
 
-  const UNSPLASH_IMAGES = [
-    'https://images.unsplash.com/photo-1585938338392-50a59970d8ee?w=800&auto=format&fit=crop&q=60',
-    'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800&auto=format&fit=crop&q=60',
-    'https://images.unsplash.com/photo-1562436260-8c9216eeb703?w=800&auto=format&fit=crop&q=60',
-    'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=800&auto=format&fit=crop&q=60',
-    'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&auto=format&fit=crop&q=60',
-    'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=800&auto=format&fit=crop&q=60',
-    'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=60',
-    'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&auto=format&fit=crop&q=60',
-    'https://images.unsplash.com/photo-1593560708920-61dd98c46a4e?w=800&auto=format&fit=crop&q=60',
-    'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?w=800&auto=format&fit=crop&q=60',
-    'https://images.unsplash.com/photo-1587314168485-3236d6710814?w=800&auto=format&fit=crop&q=60',
-    'https://images.unsplash.com/photo-1601050690597-df056fb4ce78?w=800&auto=format&fit=crop&q=60',
-    'https://images.unsplash.com/photo-1540648639573-8c848de23f0a?w=800&auto=format&fit=crop&q=60',
-    'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=800&auto=format&fit=crop&q=60',
-    'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800&auto=format&fit=crop&q=60',
-    'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=800&auto=format&fit=crop&q=60',
-    'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=800&auto=format&fit=crop&q=60',
-    'https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?w=800&auto=format&fit=crop&q=60',
-    'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=800&auto=format&fit=crop&q=60'
+  const RESTAURANT_IMAGES = [
+    'photo-1517248135467-4c7edcad34c4', // Cozy cafe
+    'photo-1552566626-52f8b828add9', // Elegant dining
+    'photo-1555396273-367ea4eb4db5', // Kitchen/dining
+    'photo-1514933651103-005eec06c04b', // Classic dining
+    'photo-1544025162-d76694265947', // Table setting
+    'photo-1537047902294-62a40c20a6ae', // Modern restaurant
+    'photo-1414235077428-338989a2e8c0', // Gourmet plates/dining
+    'photo-1559339352-11d035aa65de', // Intimate seating
+    'photo-1590846406792-0adc7f938f1d', // Restaurant bar
+    'photo-1578474846511-04ba529f0b88', // Light interior dining
+    'photo-1424847651672-12074451303f', // Outdoor terrace
+    'photo-1502086223501-7ea6ecd79368', // Bright cafe window
+    'photo-1528605248644-14dd04022da1', // Table of friends eating
+    'photo-1581349485608-9469926a8e5e', // Cozy wooden tables
+    'photo-1600891964599-f61ba0e24092', // Warm restaurant lounge
+    'photo-1592861956120-e524caf73969', // Diners in restaurant
+    'photo-1482049016688-2d3e1b311543', // Bistro table setting
+    'photo-1484723091739-30a097e8f929', // Beautiful food table
+    'photo-1498654896293-37aacf113fd9', // Korean restaurant table
+    'photo-1504674900247-0877df9cc836', // Plentiful food platter
+    'photo-1559925393-8be0ec4767c8', // Coffee shop interior
+    'photo-1521017432531-fbd92d768814', // Cafe seating
+    'photo-1513104890138-7c749659a591', // Pizzeria setting
+    'photo-1466978913421-dad2ebd01d17'  // French bistro
   ];
+
+  const CUISINE_POOLS = {
+    indian: [
+      'photo-1585938338392-50a59970d8ee',
+      'photo-1601050690597-df056fb4ce78',
+      'photo-1668236543090-82eba5ee5976',
+      'photo-1606491956689-2ea866880c84',
+      'photo-1626132647523-66f5bf380027',
+      'photo-1589301760014-d929f3979dbc',
+      'photo-1563379091339-03b21ab4a4f8',
+      'photo-1633945274405-b6c8069047b0',
+      'photo-1625398407796-82650a8c135f',
+      'photo-1626596147718-f1e405f63a2a',
+      'photo-1596797038530-2c107229654b',
+      'photo-1610192244261-3f33de3f55e4',
+      'photo-1546833999-b9f581a1996d',
+      'photo-1627308595229-7830a5c91f9f',
+      'photo-1631452180519-c014fe946bc7',
+      'photo-1645177625172-59570823937d',
+      'photo-1618040996337-56904b7850b9',
+      'photo-1605333396915-47ed6b68a00e'
+    ],
+    south_indian: [
+      'photo-1540648639573-8c848de23f0a',
+      'photo-1668236543090-82eba5ee5976',
+      'photo-1589301760014-d929f3979dbc',
+      'photo-1601050690597-df056fb4ce78',
+      'photo-1626132647523-66f5bf380027',
+      'photo-1512621776951-a57141f2eefd',
+      'photo-1630383249896-424e482df921',
+      'photo-1505253716362-afaea1d3d1af',
+      'photo-1640954848386-fdfeb119b964',
+      'photo-1606491956689-2ea866880c84'
+    ],
+    asian: [
+      'photo-1563245372-f21724e3856d',
+      'photo-1562436260-8c9216eeb703',
+      'photo-1579871494447-9811cf80d66c',
+      'photo-1585032226651-759b368d7246',
+      'photo-1512058564366-18510be2db19',
+      'photo-1617196034796-73dfa7b1fd56',
+      'photo-1526318896980-cf78c088247c',
+      'photo-1552611052-33e04de081de',
+      'photo-1608897013039-887f21d8c804',
+      'photo-1544025162-d76694265947',
+      'photo-1534422298391-e4f8c172dddb',
+      'photo-1623341214825-9f4f963727da',
+      'photo-1582450871972-ab5ca641643d'
+    ],
+    italian: [
+      'photo-1513104890138-7c749659a591',
+      'photo-1565299585323-38d6b0865b47',
+      'photo-1551183053-bf91a1d81141',
+      'photo-1563379091339-03b21ab4a4f8',
+      'photo-1546549032-9571cd6b27df',
+      'photo-1593560708920-61dd98c46a4e',
+      'photo-1574071318508-1cdbab80d002',
+      'photo-1551818255-e6e10975bc17',
+      'photo-1608897013039-887f21d8c804',
+      'photo-1612874742237-6526221588e3',
+      'photo-1534308983496-4fabb1a015ee',
+      'photo-1595295333158-4742f28fbd85'
+    ],
+    burgers: [
+      'photo-1568901346375-23c9450c58cd',
+      'photo-1571091718767-18b5b1457add',
+      'photo-1599487488170-d11ec9c172f0',
+      'photo-1534308983496-4fabb1a015ee',
+      'photo-1521305916504-4a1121188589',
+      'photo-1627308595229-7830a5c91f9f',
+      'photo-1619193100624-9ad90e0c801e',
+      'photo-1568254183919-78a4f43a2877',
+      'photo-1550547660-d9450f859349',
+      'photo-1576107232684-1279f390859f',
+      'photo-1628294895522-38600de8d98d'
+    ],
+    healthy: [
+      'photo-1512621776951-a57141f2eefd',
+      'photo-1626777552726-4a6b54c97e46',
+      'photo-1540420773420-3366772f4999',
+      'photo-1546069901-ba9599a7e63c',
+      'photo-1543339308-43e59d6b73a6',
+      'photo-1603046891744-1f76eb10aec1',
+      'photo-1618449808021-195175664b3a',
+      'photo-1598515214211-89d3c73ae83b',
+      'photo-1547496502-affa22d38842',
+      'photo-1606787366850-de6330128bfc',
+      'photo-1504674900247-0877df9cc836'
+    ]
+  };
+
+  const BREADS_IMAGES = [
+    'photo-1633945274405-b6c8069047b0', // Naan
+    'photo-1509440159596-0249088772ff', // Fresh bread loaves
+    'photo-1549931319-a545dcf3bc73', // Pita bread
+    'photo-1608897013039-887f21d8c804', // Garlic bread
+    'photo-1595295333158-4742f28fbd85', // Focaccia
+    'photo-1589301760014-d929f3979dbc'  // Flatbread
+  ];
+
+  const DESSERTS_IMAGES = [
+    'photo-1551024601-bec78aea704b', // Donuts
+    'photo-1587314168485-3236d6710814', // Cake slice
+    'photo-1563729784474-d77dbb933a9e', // Cupcakes
+    'photo-1506084868230-bb9d95c24759', // Waffles
+    'photo-1565958011703-44f9829ba187', // Cheesecake
+    'photo-1606313564200-e75d5e30476c', // Brownie
+    'photo-1578985545062-69928b1d9587', // Chocolate cake
+    'photo-1556910103-1c02745aae4d', // Strawberry ice cream
+    'photo-1572490122747-3968b75cc699', // Sundae
+    'photo-1610192244261-3f33de3f55e4'  // Indian sweet / Gulab jamun
+  ];
+
+  const BEVERAGES_IMAGES = [
+    'photo-1579954115545-a95591f28bfc', // Milkshake
+    'photo-1495474472287-4d71bcdd2085', // Coffee cup
+    'photo-1544787219-7f47ccb76574', // Soda/lime drink
+    'photo-1595981267035-7b04ec8ae33f', // Green juice / detox
+    'photo-1536935338788-846bb9981813', // Orange juice / mocktail
+    'photo-1513558161293-cdaf765ed2fd', // Iced coffee
+    'photo-1556881286-fc6915169721', // Fruit juice
+    'photo-1622483767028-3f66f32aef97'  // Soft drink
+  ];
+
 
   const MENU_TEMPLATES = {
     'North Indian, Mughlai': {
@@ -371,24 +500,48 @@ async function seedRestaurants() {
     ]
   };
 
-  function getImageForCuisine(cuisine, index) {
-    if (cuisine.includes('Indian') || cuisine.includes('Biryani')) {
-      const indianImgs = [0, 6, 9, 11, 16, 18];
-      return UNSPLASH_IMAGES[indianImgs[index % indianImgs.length]];
-    } else if (cuisine.includes('Pizza') || cuisine.includes('Italian')) {
-      const italianImgs = [1, 8];
-      return UNSPLASH_IMAGES[italianImgs[index % italianImgs.length]];
-    } else if (cuisine.includes('Chinese') || cuisine.includes('Asian')) {
-      const asianImgs = [2, 12, 14];
-      return UNSPLASH_IMAGES[asianImgs[index % asianImgs.length]];
-    } else if (cuisine.includes('Desserts')) {
-      const dessertImgs = [3, 10, 17];
-      return UNSPLASH_IMAGES[dessertImgs[index % dessertImgs.length]];
-    } else if (cuisine.includes('Burgers')) {
-      const fastFoodImgs = [4, 13, 15];
-      return UNSPLASH_IMAGES[fastFoodImgs[index % fastFoodImgs.length]];
+  function getFoodImage(cuisine, category, dishIndex, restaurantIndex) {
+    let pool = [];
+    
+    if (category === 'Breads') {
+      pool = BREADS_IMAGES;
+    } else if (category === 'Beverages') {
+      pool = BEVERAGES_IMAGES;
+    } else if (category === 'Desserts') {
+      pool = DESSERTS_IMAGES;
+    } else {
+      const cLower = cuisine.toLowerCase();
+      if (cLower.includes('south indian')) {
+        pool = CUISINE_POOLS.south_indian;
+      } else if (cLower.includes('north indian') || cLower.includes('biryani') || cLower.includes('mughlai')) {
+        pool = CUISINE_POOLS.indian;
+      } else if (cLower.includes('chinese') || cLower.includes('asian') || cLower.includes('noodles')) {
+        pool = CUISINE_POOLS.asian;
+      } else if (cLower.includes('italian') || cLower.includes('pizza') || cLower.includes('pasta')) {
+        pool = CUISINE_POOLS.italian;
+      } else if (cLower.includes('desserts') || cLower.includes('cakes')) {
+        pool = DESSERTS_IMAGES;
+      } else if (cLower.includes('burgers') || cLower.includes('burger')) {
+        pool = CUISINE_POOLS.burgers;
+      } else if (cLower.includes('continental') || cLower.includes('salad') || cLower.includes('healthy')) {
+        pool = CUISINE_POOLS.healthy;
+      } else {
+        pool = CUISINE_POOLS.indian;
+      }
     }
-    return UNSPLASH_IMAGES[index % UNSPLASH_IMAGES.length];
+
+    const index = (restaurantIndex * 3 + dishIndex) % pool.length;
+    const imageId = pool[index];
+    return `https://images.unsplash.com/${imageId}?w=400&h=400&auto=format&fit=crop&q=80`;
+  }
+
+  function getRestaurantImage(cuisine, index) {
+    if (index % 2 === 0) {
+      const imageId = RESTAURANT_IMAGES[(Math.floor(index / 2)) % RESTAURANT_IMAGES.length];
+      return `https://images.unsplash.com/${imageId}?w=600&h=400&auto=format&fit=crop&q=80`;
+    } else {
+      return getFoodImage(cuisine, '', index, index);
+    }
   }
 
   function sanitizeDishForVeg(dish, isPureVeg) {
@@ -450,7 +603,7 @@ async function seedRestaurants() {
     const address = `Shop ${50 + (i % 450)}, Main Road, ${area}, Delhi NCR`;
     const phone = `+91 99999 ${String(10000 + i).slice(1)}`;
 
-    const image_url = 'https://picsum.photos/seed/zomato_res_' + i + '/600/400';
+    const image_url = getRestaurantImage(cuisine, i);
 
     restaurantsData.push({
       index: i,
@@ -494,7 +647,7 @@ async function seedRestaurants() {
           is_veg: sanitized.is_veg,
           is_bestseller,
           description: sanitized.desc,
-          image_url: 'https://picsum.photos/seed/' + dishSeed + '/300/300'
+          image_url: getFoodImage(cuisine, category, dishIdx, i)
         });
       });
     });

@@ -9,9 +9,10 @@ export function Analytics() {
 
   const loadData = async () => {
     try {
-      const ords = await (await fetch('http://localhost:5001/api/orders')).json();
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+      const ords = await (await fetch(`${API_URL}/api/orders`)).json();
       setOrders(Array.isArray(ords) ? ords : []);
-      const rests = await (await fetch('http://localhost:5001/api/restaurants')).json();
+      const rests = await (await fetch(`${API_URL}/api/restaurants`)).json();
       setRestaurants(Array.isArray(rests) ? rests : []);
     } catch (e) {
       console.error(e);

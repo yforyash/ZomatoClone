@@ -31,48 +31,96 @@ export function Checkout() {
   const eventSource = useRef(null);
 
   const handlePlaceOrder = async (values) => {
-    if (values.paymentMethod !== 'COD') {
-      setStep(2);
-      setGatewayMsg('Contacting secure bank servers...');
-      await new Promise(r => setTimeout(r, 1200));
-      setGatewayMsg('Authorizing payment transaction...');
-      await new Promise(r => setTimeout(r, 1200));
-      setGatewayMsg('Payment Successful! Confirming your order...');
-      await new Promise(r => setTimeout(r, 800));
-      confetti({ particleCount: 80, spread: 60 });
-    }
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 
-    try {
-      const response = await fetch('http://localhost:5001/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          items: cartItems,
-          total_price: cartTotal + 40,
-          address: values.address,
-          latitude: coords[0],
-          longitude: coords[1],
-          payment_method: values.paymentMethod,
-          payment_status: values.paymentMethod === 'COD' ? 'Pending' : 'Paid',
-          customer_name: values.name,
-          customer_phone: values.phone
-        }),
-      });
+    if (values.paymentMethod === 'COD') {
+      try {
+        const response = await fetch(`${API_URL}/api/orders`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: cartItems,
+            total_price: cartTotal + 40,
+            address: values.address,
+            latitude: coords[0],
+            longitude: coords[1],
+            payment_method: 'COD',
+            payment_status: 'Pending',
+            customer_name: values.name,
+            customer_phone: values.phone
+          }),
+        });
 
-      const order = await response.json();
-      setOrderId(order.id);
-      setStep(3);
-      clearCart();
-      startTracking(order.id);
-    } catch (e) {
-      alert('Order checkout failed');
-      setStep(1);
+        const order = await response.json();
+        setOrderId(order.id);
+        setStep(3);
+        clearCart();
+        startTracking(order.id);
+        confetti({ particleCount: 80, spread: 60 });
+      } catch (e) {
+        alert('Order checkout failed');
+        setStep(1);
+      }
+    } else {
+      try {
+        setStep(2);
+        setGatewayMsg('Initializing secure checkout...');
+
+        const response = await fetch(`${API_URL}/api/orders/create-checkout-session`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: cartItems,
+            total_price: cartTotal + 40,
+            address: values.address,
+            latitude: coords[0],
+            longitude: coords[1],
+            customer_name: values.name,
+            customer_phone: values.phone
+          })
+        });
+        
+        const data = await response.json();
+
+        if (data.mockRedirect) {
+          setGatewayMsg('Contacting secure bank servers (Mock)...');
+          await new Promise(r => setTimeout(r, 1200));
+          setGatewayMsg('Authorizing payment transaction (Mock)...');
+          await new Promise(r => setTimeout(r, 1200));
+          
+          const confirmRes = await fetch(`${API_URL}/api/orders/confirm-payment`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId: 'mock', orderId: data.orderId })
+          });
+          const confirmData = await confirmRes.json();
+
+          if (confirmData.success) {
+            setOrderId(data.orderId);
+            setStep(3);
+            clearCart();
+            startTracking(data.orderId);
+            confetti({ particleCount: 80, spread: 60 });
+          } else {
+            alert('Mock payment confirmation failed');
+            setStep(1);
+          }
+        } else if (data.url) {
+          window.location.href = data.url;
+        } else {
+          throw new Error('Invalid checkout session response');
+        }
+      } catch (e) {
+        alert('Payment initialization failed: ' + e.message);
+        setStep(1);
+      }
     }
   };
 
   const startTracking = (id) => {
     if (eventSource.current) eventSource.current.close();
-    eventSource.current = new EventSource(`http://localhost:5001/api/orders/${id}/track`);
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+    eventSource.current = new EventSource(`${API_URL}/api/orders/${id}/track`);
     eventSource.current.onmessage = e => {
       const data = JSON.parse(e.data);
       setStatus(data.status);
@@ -85,6 +133,42 @@ export function Checkout() {
   };
 
   useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    const sessionId = query.get('session_id');
+    const urlOrderId = query.get('order_id');
+
+    if (sessionId && urlOrderId) {
+      setStep(2);
+      setGatewayMsg('Confirming payment with Stripe...');
+      
+      const confirmPayment = async () => {
+        try {
+          const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+          const response = await fetch(`${API_URL}/api/orders/confirm-payment`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId, orderId: urlOrderId })
+          });
+          const result = await response.json();
+          if (result.success) {
+            setOrderId(urlOrderId);
+            clearCart();
+            confetti({ particleCount: 150, spread: 80 });
+            setStep(3);
+            startTracking(urlOrderId);
+          } else {
+            alert('Stripe payment confirmation failed');
+            setStep(1);
+          }
+        } catch (e) {
+          alert('Error confirming payment');
+          setStep(1);
+        }
+      };
+
+      confirmPayment();
+    }
+
     return () => { if (eventSource.current) eventSource.current.close(); };
   }, []);
 

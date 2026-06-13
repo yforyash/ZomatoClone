@@ -1,4 +1,5 @@
 const orderService = require('../services/orderService');
+const stripe = process.env.STRIPE_SECRET_KEY ? require('stripe')(process.env.STRIPE_SECRET_KEY) : null;
 
 async function createOrder(req, res) {
   try {
@@ -84,8 +85,93 @@ async function trackOrder(req, res) {
   }
 }
 
+async function createCheckoutSession(req, res) {
+  try {
+    const { items, total_price, address, latitude, longitude, customer_name, customer_phone } = req.body;
+
+    const order = await orderService.insertOrder({
+      items,
+      totalPrice: total_price,
+      address,
+      latitude,
+      longitude,
+      paymentMethod: 'Card (Stripe)',
+      paymentStatus: 'Pending',
+      customerName: customer_name,
+      customerPhone: customer_phone
+    });
+
+    if (!stripe) {
+      console.log('Stripe not configured on backend. Simulating success redirect.');
+      return res.json({ mockRedirect: true, orderId: order.id });
+    }
+
+    const lineItems = items.map(item => ({
+      price_data: {
+        currency: 'inr',
+        product_data: {
+          name: item.name,
+        },
+        unit_amount: Math.round(item.price * 100), // in paise (cents)
+      },
+      quantity: item.qty,
+    }));
+
+    // Add delivery fee
+    lineItems.push({
+      price_data: {
+        currency: 'inr',
+        product_data: {
+          name: 'Delivery Fee',
+        },
+        unit_amount: 4000, // Rs. 40 in paise
+      },
+      quantity: 1,
+    });
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: lineItems,
+      mode: 'payment',
+      success_url: `${frontendUrl}/checkout?session_id={CHECKOUT_SESSION_ID}&order_id=${order.id}`,
+      cancel_url: `${frontendUrl}/checkout`,
+      metadata: {
+        orderId: order.id.toString(),
+      }
+    });
+
+    res.json({ url: session.url, orderId: order.id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+async function confirmPayment(req, res) {
+  try {
+    const { sessionId, orderId } = req.body;
+
+    if (!stripe || sessionId === 'mock') {
+      await orderService.updatePaymentStatus(orderId, 'Paid');
+      return res.json({ success: true, message: 'Mock payment confirmed successfully.' });
+    }
+
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    if (session.payment_status === 'paid') {
+      await orderService.updatePaymentStatus(orderId, 'Paid');
+      res.json({ success: true, message: 'Stripe payment confirmed successfully.' });
+    } else {
+      res.status(400).json({ error: 'Stripe payment was not completed.' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
 module.exports = {
   createOrder,
   getOrders,
-  trackOrder
+  trackOrder,
+  createCheckoutSession,
+  confirmPayment
 };

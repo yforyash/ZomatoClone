@@ -1,4 +1,4 @@
-const BASE_URL = 'http://localhost:5001/api';
+const BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5001') + '/api';
 
 export async function fetchRestaurants(page = 1, search = '', veg = false) {
   let url = `${BASE_URL}/restaurants?page=${page}&limit=6`;
@@ -100,4 +100,32 @@ export async function resetPassword(email, token, newPasswordHash) {
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Password update failed');
   return data;
+}
+
+export async function createStripeSession(orderData) {
+  const res = await fetch(`${BASE_URL}/orders/create-checkout-session`, {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json',
+      'x-user-id': localStorage.getItem('z_user') 
+        ? JSON.parse(localStorage.getItem('z_user')).id 
+        : 'Anonymous'
+    },
+    body: JSON.stringify(orderData),
+  });
+  return await res.json();
+}
+
+export async function confirmStripePayment(sessionId, orderId) {
+  const res = await fetch(`${BASE_URL}/orders/confirm-payment`, {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json',
+      'x-user-id': localStorage.getItem('z_user') 
+        ? JSON.parse(localStorage.getItem('z_user')).id 
+        : 'Anonymous'
+    },
+    body: JSON.stringify({ sessionId, orderId }),
+  });
+  return await res.json();
 }

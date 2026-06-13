@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const authService = require('../services/authService');
+const emailService = require('../services/emailService');
 
 async function register(req, res) {
   try {
@@ -47,14 +48,12 @@ async function forgotPassword(req, res) {
 
     await authService.createPasswordReset(email, token, expiresAt);
     
-    const resetLink = `http://localhost:5173/login?token=${token}&email=${encodeURIComponent(email)}`;
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const resetLink = `${frontendUrl}/login?token=${token}&email=${encodeURIComponent(email)}`;
     
-    console.log('\n=========================================');
-    console.log(`📬 [EMAIL SENT] to: ${email}`);
-    console.log(`Reset link: ${resetLink}`);
-    console.log('=========================================\n');
+    await emailService.sendResetEmail(email, resetLink);
 
-    res.json({ message: 'Reset link simulated in backend server logs.', link: resetLink });
+    res.json({ message: 'Password reset link sent successfully.', link: resetLink });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

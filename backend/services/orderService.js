@@ -40,9 +40,14 @@ async function updateOrderStatus(id, status) {
   await query("UPDATE orders SET status = $1 WHERE id = $2", [status, id]);
 }
 
+async function updatePaymentStatus(id, status) {
+  await query("UPDATE orders SET payment_status = $1 WHERE id = $2", [status, id]);
+}
+
 module.exports = {
   insertOrder,
   getOrdersList,
   getOrderById,
-  updateOrderStatus
+  updateOrderStatus,
+  updatePaymentStatus
 };
