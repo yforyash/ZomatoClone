@@ -17,6 +17,20 @@ const CheckoutSchema = Yup.object().shape({
   upiId: Yup.string().when('paymentMethod', { is: 'upi', then: () => Yup.string().required('UPI ID is required') })
 });
 
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    if (window.Razorpay) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
+
 export function Checkout() {
   const navigate = useNavigate();
   const { cartItems, activeRestaurant, cartTotal, clearCart } = useCart();
@@ -61,10 +75,124 @@ export function Checkout() {
         alert('Order checkout failed');
         setStep(1);
       }
+    } else if (values.paymentMethod === 'upi') {
+      try {
+        setStep(2);
+        setGatewayMsg('Initializing UPI payment with Razorpay...');
+
+        const response = await fetch(`${API_URL}/api/orders/create-razorpay-order`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: cartItems,
+            total_price: cartTotal + 40,
+            address: values.address,
+            latitude: coords[0],
+            longitude: coords[1],
+            customer_name: values.name,
+            customer_phone: values.phone
+          })
+        });
+        
+        const data = await response.json();
+
+        if (data.mockRedirect) {
+          setGatewayMsg('Opening secure UPI app link (Mock)...');
+          await new Promise(r => setTimeout(r, 1200));
+          setGatewayMsg('Waiting for UPI transaction confirmation (Mock)...');
+          await new Promise(r => setTimeout(r, 1200));
+          
+          const confirmRes = await fetch(`${API_URL}/api/orders/verify-razorpay-payment`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ razorpayOrderId: 'mock', orderId: data.orderId })
+          });
+          const confirmData = await confirmRes.json();
+
+          if (confirmData.success) {
+            setOrderId(data.orderId);
+            setStep(3);
+            clearCart();
+            startTracking(data.orderId);
+            confetti({ particleCount: 80, spread: 60 });
+          } else {
+            alert('Mock payment verification failed');
+            setStep(1);
+          }
+        } else if (data.success) {
+          setGatewayMsg('Loading payment overlay...');
+          const scriptLoaded = await loadRazorpayScript();
+          if (!scriptLoaded) {
+            alert('Failed to load payment gateway script');
+            setStep(1);
+            return;
+          }
+
+          const options = {
+            key: data.keyId,
+            amount: data.amount,
+            currency: data.currency,
+            name: 'Zomato Clone',
+            description: `Order Receipt #${data.orderId}`,
+            order_id: data.razorpayOrderId,
+            handler: async function (res) {
+              setStep(2);
+              setGatewayMsg('Verifying payment signature...');
+              try {
+                const verifyRes = await fetch(`${API_URL}/api/orders/verify-razorpay-payment`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    razorpayOrderId: res.razorpay_order_id,
+                    razorpayPaymentId: res.razorpay_payment_id,
+                    razorpaySignature: res.razorpay_signature,
+                    orderId: data.orderId
+                  })
+                });
+                const verifyData = await verifyRes.json();
+                if (verifyData.success) {
+                  setOrderId(data.orderId);
+                  setStep(3);
+                  clearCart();
+                  startTracking(data.orderId);
+                  confetti({ particleCount: 100, spread: 70 });
+                } else {
+                  alert('Payment verification failed.');
+                  setStep(1);
+                }
+              } catch (e) {
+                alert('Payment verification connection failed.');
+                setStep(1);
+              }
+            },
+            prefill: {
+              name: values.name,
+              contact: values.phone
+            },
+            theme: {
+              color: '#e23744'
+            },
+            modal: {
+              ondismiss: function () {
+                alert('Payment cancelled by user.');
+                setStep(1);
+              }
+            }
+          };
+
+          const rzp = new window.Razorpay(options);
+          rzp.open();
+        } else {
+          throw new Error('Invalid Razorpay session response');
+        }
+      } catch (e) {
+        alert('UPI Payment initialization failed: ' + e.message);
+        setStep(1);
+      }
     } else {
       try {
         setStep(2);
-        setGatewayMsg('Initializing secure checkout...');
+        setGatewayMsg('Initializing secure Card checkout with Stripe...');
 
         const response = await fetch(`${API_URL}/api/orders/create-checkout-session`, {
           method: 'POST',

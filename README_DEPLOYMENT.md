@@ -25,6 +25,10 @@ FRONTEND_URL=https://your-frontend-domain.vercel.app
 # Real Stripe Checkout Payment Gateway (Optional - falls back to mock flow if omitted)
 STRIPE_SECRET_KEY=sk_test_...
 
+# Real Razorpay UPI/Card Payment Gateway (Optional - falls back to mock flow if omitted)
+RAZORPAY_KEY_ID=rzp_test_...
+RAZORPAY_KEY_SECRET=your_razorpay_secret_key
+
 # Real SMTP Email Configuration for Forgot/Reset Passwords (Optional - falls back to mock logger)
 SMTP_HOST=smtp.sendgrid.net
 SMTP_PORT=587

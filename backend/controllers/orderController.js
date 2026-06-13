@@ -1,5 +1,8 @@
 const orderService = require('../services/orderService');
 const stripe = process.env.STRIPE_SECRET_KEY ? require('stripe')(process.env.STRIPE_SECRET_KEY) : null;
+const Razorpay = process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET ? require('razorpay') : null;
+const razorpayInstance = Razorpay ? new Razorpay({ key_id: process.env.RAZORPAY_KEY_ID, key_secret: process.env.RAZORPAY_KEY_SECRET }) : null;
+const crypto = require('crypto');
 
 async function createOrder(req, res) {
   try {
@@ -168,10 +171,81 @@ async function confirmPayment(req, res) {
   }
 }
 
+async function createRazorpayOrder(req, res) {
+  try {
+    const { items, total_price, address, latitude, longitude, customer_name, customer_phone } = req.body;
+
+    const order = await orderService.insertOrder({
+      items,
+      totalPrice: total_price,
+      address,
+      latitude,
+      longitude,
+      paymentMethod: 'UPI / Card (Razorpay)',
+      paymentStatus: 'Pending',
+      customerName: customer_name,
+      customerPhone: customer_phone
+    });
+
+    if (!razorpayInstance) {
+      console.log('Razorpay not configured on backend. Simulating mock checkout.');
+      return res.json({ mockRedirect: true, orderId: order.id });
+    }
+
+    const options = {
+      amount: Math.round(total_price * 100), // in paise
+      currency: 'INR',
+      receipt: `receipt_order_${order.id}`,
+      notes: {
+        orderId: order.id.toString(),
+      }
+    };
+
+    const razorpayOrder = await razorpayInstance.orders.create(options);
+
+    res.json({
+      success: true,
+      keyId: process.env.RAZORPAY_KEY_ID,
+      amount: razorpayOrder.amount,
+      currency: razorpayOrder.currency,
+      razorpayOrderId: razorpayOrder.id,
+      orderId: order.id
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+async function verifyRazorpayPayment(req, res) {
+  try {
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature, orderId } = req.body;
+
+    if (!razorpayInstance || razorpayOrderId === 'mock') {
+      await orderService.updatePaymentStatus(orderId, 'Paid');
+      return res.json({ success: true, message: 'Mock payment verified successfully.' });
+    }
+
+    const hmac = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET);
+    hmac.update(razorpayOrderId + '|' + razorpayPaymentId);
+    const generatedSignature = hmac.digest('hex');
+
+    if (generatedSignature === razorpaySignature) {
+      await orderService.updatePaymentStatus(orderId, 'Paid');
+      res.json({ success: true, message: 'Razorpay payment verified successfully.' });
+    } else {
+      res.status(400).json({ error: 'Signature verification failed' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
 module.exports = {
   createOrder,
   getOrders,
   trackOrder,
   createCheckoutSession,
-  confirmPayment
+  confirmPayment,
+  createRazorpayOrder,
+  verifyRazorpayPayment
 };
