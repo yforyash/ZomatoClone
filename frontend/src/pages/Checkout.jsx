@@ -7,12 +7,71 @@ import confetti from 'canvas-confetti';
 import { Truck, CheckCircle2 } from 'lucide-react';
 import { UniversalMap } from '../components/UniversalMap';
 
+const handleNameChange = (e, setFieldValue) => {
+  const value = e.target.value;
+  const clean = value.replace(/[^A-Za-z\s]/g, '');
+  setFieldValue('name', clean);
+};
+
+const handlePhoneChange = (e, setFieldValue) => {
+  const value = e.target.value;
+  const clean = value.replace(/\D/g, '').substring(0, 10);
+  setFieldValue('phone', clean);
+};
+
+const handleCardNumChange = (e, setFieldValue) => {
+  const value = e.target.value;
+  const isDelete = e.nativeEvent?.inputType === 'deleteContentBackward';
+  const clean = value.replace(/\D/g, '').substring(0, 16);
+  
+  let formatted = '';
+  const parts = [];
+  for (let i = 0; i < clean.length; i += 4) {
+    parts.push(clean.substring(i, i + 4));
+  }
+  
+  if (parts.length > 0) {
+    formatted = parts.join(' ');
+    const lastPart = parts[parts.length - 1];
+    if (lastPart.length === 4 && !isDelete && clean.length < 16) {
+      formatted += ' ';
+    }
+  }
+  setFieldValue('cardNum', formatted);
+};
+
+const handleExpiryChange = (e, setFieldValue) => {
+  const value = e.target.value;
+  const isDelete = e.nativeEvent?.inputType === 'deleteContentBackward';
+  const clean = value.replace(/\D/g, '').substring(0, 4);
+  
+  let formatted = '';
+  if (clean.length > 0) {
+    if (clean.length <= 2) {
+      formatted = clean;
+      if (clean.length === 2 && !isDelete) {
+        formatted += '/';
+      }
+    } else {
+      formatted = `${clean.slice(0, 2)}/${clean.slice(2, 4)}`;
+    }
+  }
+  setFieldValue('expiry', formatted);
+};
+
+const handleCVVChange = (e, setFieldValue) => {
+  const value = e.target.value;
+  const clean = value.replace(/\D/g, '').substring(0, 3);
+  setFieldValue('cvv', clean);
+};
+
 const CheckoutSchema = Yup.object().shape({
   name: Yup.string().required('Full Name is required'),
   phone: Yup.string().matches(/^[0-9]{10}$/, 'Must be a 10 digit number').required('Phone is required'),
   address: Yup.string().required('Delivery address is required'),
   paymentMethod: Yup.string().required('Select a payment method'),
-  cardNum: Yup.string().when('paymentMethod', { is: 'card', then: () => Yup.string().matches(/^[0-9]{16}$/, 'Must be 16 digits').required('Required') }),
+  cardNum: Yup.string().when('paymentMethod', { is: 'card', then: () => Yup.string().matches(/^[0-9\s]{19}$/, 'Must be a valid 16-digit card number').required('Required') }),
+  expiry: Yup.string().when('paymentMethod', { is: 'card', then: () => Yup.string().matches(/^(0[1-9]|1[0-2])\/([0-9]{2})$/, 'Must be MM/YY').required('Required') }),
   cvv: Yup.string().when('paymentMethod', { is: 'card', then: () => Yup.string().matches(/^[0-9]{3}$/, 'Must be 3 digits').required('Required') }),
   upiId: Yup.string().when('paymentMethod', { is: 'upi', then: () => Yup.string().required('UPI ID is required') })
 });
@@ -43,6 +102,73 @@ export function Checkout() {
   const [riderCoords, setRiderCoords] = useState(null);
 
   const eventSource = useRef(null);
+  const [mockPaymentState, setMockPaymentState] = useState(null);
+
+  const handleVerifyMockUPI = async (upiPin) => {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+    setGatewayMsg('Verifying UPI PIN...');
+    setStep(2);
+    try {
+      await new Promise(r => setTimeout(r, 1200));
+
+      const confirmRes = await fetch(`${API_URL}/api/orders/verify-razorpay-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ razorpayOrderId: 'mock', orderId: mockPaymentState.orderId })
+      });
+      const confirmData = await confirmRes.json();
+
+      if (confirmData.success) {
+        setOrderId(mockPaymentState.orderId);
+        setMockPaymentState(null);
+        setStep(3);
+        clearCart();
+        startTracking(mockPaymentState.orderId);
+        confetti({ particleCount: 80, spread: 60 });
+      } else {
+        alert('Mock payment verification failed');
+        setMockPaymentState(null);
+        setStep(1);
+      }
+    } catch (e) {
+      alert('Mock payment verification failed');
+      setMockPaymentState(null);
+      setStep(1);
+    }
+  };
+
+  const handleVerifyMockCard = async (otp) => {
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+    setGatewayMsg('Confirming payment...');
+    setStep(2);
+    try {
+      await new Promise(r => setTimeout(r, 1200));
+
+      const confirmRes = await fetch(`${API_URL}/api/orders/confirm-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: 'mock', orderId: mockPaymentState.orderId })
+      });
+      const confirmData = await confirmRes.json();
+
+      if (confirmData.success) {
+        setOrderId(mockPaymentState.orderId);
+        setMockPaymentState(null);
+        setStep(3);
+        clearCart();
+        startTracking(mockPaymentState.orderId);
+        confetti({ particleCount: 80, spread: 60 });
+      } else {
+        alert('Mock payment confirmation failed');
+        setMockPaymentState(null);
+        setStep(1);
+      }
+    } catch (e) {
+      alert('Mock payment confirmation failed');
+      setMockPaymentState(null);
+      setStep(1);
+    }
+  };
 
   const handlePlaceOrder = async (values) => {
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
@@ -97,28 +223,15 @@ export function Checkout() {
         const data = await response.json();
 
         if (data.mockRedirect) {
-          setGatewayMsg('Opening secure UPI app link (Mock)...');
-          await new Promise(r => setTimeout(r, 1200));
-          setGatewayMsg('Waiting for UPI transaction confirmation (Mock)...');
-          await new Promise(r => setTimeout(r, 1200));
-          
-          const confirmRes = await fetch(`${API_URL}/api/orders/verify-razorpay-payment`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ razorpayOrderId: 'mock', orderId: data.orderId })
+          setMockPaymentState({
+            type: 'upi',
+            orderId: data.orderId,
+            amount: cartTotal + 40,
+            name: values.name,
+            phone: values.phone,
+            upiId: values.upiId
           });
-          const confirmData = await confirmRes.json();
-
-          if (confirmData.success) {
-            setOrderId(data.orderId);
-            setStep(3);
-            clearCart();
-            startTracking(data.orderId);
-            confetti({ particleCount: 80, spread: 60 });
-          } else {
-            alert('Mock payment verification failed');
-            setStep(1);
-          }
+          return;
         } else if (data.success) {
           setGatewayMsg('Loading payment overlay...');
           const scriptLoaded = await loadRazorpayScript();
@@ -211,28 +324,15 @@ export function Checkout() {
         const data = await response.json();
 
         if (data.mockRedirect) {
-          setGatewayMsg('Contacting secure bank servers (Mock)...');
-          await new Promise(r => setTimeout(r, 1200));
-          setGatewayMsg('Authorizing payment transaction (Mock)...');
-          await new Promise(r => setTimeout(r, 1200));
-          
-          const confirmRes = await fetch(`${API_URL}/api/orders/confirm-payment`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionId: 'mock', orderId: data.orderId })
+          setMockPaymentState({
+            type: 'card',
+            orderId: data.orderId,
+            amount: cartTotal + 40,
+            name: values.name,
+            phone: values.phone,
+            cardNum: values.cardNum
           });
-          const confirmData = await confirmRes.json();
-
-          if (confirmData.success) {
-            setOrderId(data.orderId);
-            setStep(3);
-            clearCart();
-            startTracking(data.orderId);
-            confetti({ particleCount: 80, spread: 60 });
-          } else {
-            alert('Mock payment confirmation failed');
-            setStep(1);
-          }
+          return;
         } else if (data.url) {
           window.location.href = data.url;
         } else {
@@ -324,12 +424,32 @@ export function Checkout() {
                     <h3>1. Delivery Information</h3>
                     <div className="form-group" style={{ marginTop: '1rem' }}>
                       <label className="form-label">Full Name</label>
-                      <Field name="name" className="form-input" />
+                      <Field name="name">
+                        {({ field, form }) => (
+                          <input
+                            {...field}
+                            type="text"
+                            className="form-input"
+                            placeholder="Full Name (letters only)"
+                            onChange={(e) => handleNameChange(e, form.setFieldValue)}
+                          />
+                        )}
+                      </Field>
                       <ErrorMessage name="name" component="div" className="form-error" />
                     </div>
                     <div className="form-group">
                       <label className="form-label">Phone Number</label>
-                      <Field name="phone" className="form-input" placeholder="10 Digit Mobile" />
+                      <Field name="phone">
+                        {({ field, form }) => (
+                          <input
+                            {...field}
+                            type="text"
+                            className="form-input"
+                            placeholder="10 Digit Mobile"
+                            onChange={(e) => handlePhoneChange(e, form.setFieldValue)}
+                          />
+                        )}
+                      </Field>
                       <ErrorMessage name="phone" component="div" className="form-error" />
                     </div>
                     <div className="form-group">
@@ -368,17 +488,48 @@ export function Checkout() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1.2rem' }}>
                         <div className="form-group">
                           <label className="form-label">Card Number</label>
-                          <Field name="cardNum" className="form-input" placeholder="16 Digit Card Number" />
+                          <Field name="cardNum">
+                            {({ field, form }) => (
+                              <input
+                                {...field}
+                                type="text"
+                                className="form-input"
+                                placeholder="XXXX XXXX XXXX XXXX"
+                                onChange={(e) => handleCardNumChange(e, form.setFieldValue)}
+                              />
+                            )}
+                          </Field>
                           <ErrorMessage name="cardNum" component="div" className="form-error" />
                         </div>
                         <div style={{ display: 'flex', gap: '1rem' }}>
                           <div className="form-group" style={{ flex: 1 }}>
                             <label className="form-label">Expiry (MM/YY)</label>
-                            <Field name="expiry" className="form-input" placeholder="12/28" />
+                            <Field name="expiry">
+                              {({ field, form }) => (
+                                <input
+                                  {...field}
+                                  type="text"
+                                  className="form-input"
+                                  placeholder="MM/YY"
+                                  onChange={(e) => handleExpiryChange(e, form.setFieldValue)}
+                                />
+                              )}
+                            </Field>
+                            <ErrorMessage name="expiry" component="div" className="form-error" />
                           </div>
                           <div className="form-group" style={{ flex: 1 }}>
                             <label className="form-label">CVV</label>
-                            <Field name="cvv" type="password" className="form-input" placeholder="123" />
+                            <Field name="cvv">
+                              {({ field, form }) => (
+                                <input
+                                  {...field}
+                                  type="password"
+                                  className="form-input"
+                                  placeholder="XXX"
+                                  onChange={(e) => handleCVVChange(e, form.setFieldValue)}
+                                />
+                              )}
+                            </Field>
                             <ErrorMessage name="cvv" component="div" className="form-error" />
                           </div>
                         </div>
@@ -449,6 +600,180 @@ export function Checkout() {
           </div>
         </div>
       )}
+      {/* Render Mock Payment Overlays if active */}
+      {mockPaymentState && mockPaymentState.type === 'upi' && (
+        <MockUPIOverlay
+          state={mockPaymentState}
+          onVerify={handleVerifyMockUPI}
+          onCancel={() => {
+            setMockPaymentState(null);
+            setStep(1);
+          }}
+        />
+      )}
+
+      {mockPaymentState && mockPaymentState.type === 'card' && (
+        <MockCardOverlay
+          state={mockPaymentState}
+          onVerify={handleVerifyMockCard}
+          onCancel={() => {
+            setMockPaymentState(null);
+            setStep(1);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function MockUPIOverlay({ state, onVerify, onCancel }) {
+  const [pin, setPin] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (pin.length < 4) {
+      alert('Please enter a valid 4 to 6-digit UPI PIN');
+      return;
+    }
+    setSubmitting(true);
+    onVerify(pin);
+  };
+
+  return (
+    <div className="mock-payment-overlay">
+      <div className="mock-razorpay-card">
+        <div className="mock-razorpay-header">
+          <div className="mock-razorpay-header-left">
+            <span className="mock-razorpay-logo">Razorpay</span>
+            <span className="mock-razorpay-badge">Sandbox Mode</span>
+          </div>
+          <div className="mock-razorpay-header-right">
+            <div className="mock-razorpay-amount">₹{state.amount}</div>
+            <div className="mock-razorpay-desc">Order #{state.orderId}</div>
+          </div>
+        </div>
+        <form onSubmit={handleSubmit} className="mock-razorpay-body">
+          <div className="mock-razorpay-info-row">
+            <div className="mock-razorpay-info-item">
+              <span className="mock-razorpay-label">Customer Name</span>
+              <span className="mock-razorpay-val">{state.name}</span>
+            </div>
+            <div className="mock-razorpay-info-item">
+              <span className="mock-razorpay-label">Mobile Number</span>
+              <span className="mock-razorpay-val">{state.phone}</span>
+            </div>
+            <div className="mock-razorpay-info-item">
+              <span className="mock-razorpay-label">UPI ID</span>
+              <span className="mock-razorpay-val">{state.upiId || 'No UPI ID provided'}</span>
+            </div>
+          </div>
+          
+          <div className="mock-razorpay-input-container">
+            <label className="mock-razorpay-input-label">Enter 4-6 Digit UPI PIN</label>
+            <input
+              type="password"
+              className="mock-razorpay-input"
+              value={pin}
+              maxLength={6}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+              placeholder="••••••"
+              autoFocus
+              required
+            />
+            <span style={{ fontSize: '0.75rem', color: '#9ca3af', textAlign: 'center', marginTop: '0.2rem' }}>
+              For simulation, enter any PIN (e.g., 1234)
+            </span>
+          </div>
+          
+          <button type="submit" disabled={submitting} className="mock-razorpay-btn">
+            {submitting ? 'Verifying PIN...' : `Pay ₹${state.amount}`}
+          </button>
+        </form>
+        <div className="mock-razorpay-footer">
+          <span>Securely processed by Razorpay Mock</span>
+          <button type="button" className="mock-razorpay-cancel" onClick={onCancel}>Cancel Payment</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MockCardOverlay({ state, onVerify, onCancel }) {
+  const [otp, setOtp] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (otp.length !== 6) {
+      alert('Please enter a 6-digit OTP');
+      return;
+    }
+    setSubmitting(true);
+    onVerify(otp);
+  };
+
+  const cardDigits = state.cardNum.replace(/\s/g, '');
+  const last4Card = cardDigits.substring(cardDigits.length - 4);
+  const last4Phone = state.phone.substring(state.phone.length - 4);
+
+  return (
+    <div className="mock-payment-overlay">
+      <div className="mock-bank-card">
+        <div className="mock-bank-header">
+          <div className="mock-bank-logo-sec">
+            <span className="mock-bank-title">Secure Bank Gateway</span>
+          </div>
+          <span className="mock-bank-secure-badge">Verified by Visa / ID Check</span>
+        </div>
+        <form onSubmit={handleSubmit} className="mock-bank-body">
+          <table className="mock-bank-details">
+            <tbody>
+              <tr>
+                <td className="label">Merchant</td>
+                <td className="value">Zomato Clone</td>
+              </tr>
+              <tr>
+                <td className="label">Amount</td>
+                <td className="value">₹{state.amount}</td>
+              </tr>
+              <tr>
+                <td className="label">Card Number</td>
+                <td className="value">•••• •••• •••• {last4Card || '0000'}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div className="mock-bank-instructions">
+            A one-time passcode (OTP) has been sent to your registered mobile number ending in **{last4Phone || 'XXXX'}.
+          </div>
+
+          <div className="mock-bank-input-sec">
+            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '0.4rem' }}>Enter 6-Digit OTP</label>
+            <input
+              type="text"
+              className="mock-bank-input"
+              value={otp}
+              maxLength={6}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+              placeholder="000000"
+              autoFocus
+              required
+            />
+          </div>
+
+          <div className="mock-bank-actions">
+            <button type="button" className="mock-bank-cancel-btn" onClick={onCancel}>Cancel</button>
+            <button type="submit" disabled={submitting} className="mock-bank-submit-btn">
+              {submitting ? 'Authenticating...' : 'Submit OTP'}
+            </button>
+          </div>
+          
+          <div className="mock-bank-resend-text">
+            Didn't receive the OTP? <button type="button" className="mock-bank-resend-link" onClick={() => alert('OTP has been resent!')}>Resend OTP</button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
