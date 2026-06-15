@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const swaggerUi = require('swagger-ui-express');
+const swaggerJsdoc = require('swagger-jsdoc');
 const { query } = require('./config/db');
 const { seedRestaurants } = require('./config/seed');
 const requestLogger = require('./middlewares/logger');
@@ -13,7 +15,6 @@ app.use(express.json());
 app.use(requestLogger);
 
 async function initDatabase() {
-  console.log('Initializing PostgreSQL database...');
   try {
     await query(`
       CREATE TABLE IF NOT EXISTS users (
@@ -92,15 +93,17 @@ async function initDatabase() {
         payment_status VARCHAR(50) DEFAULT 'Pending',
         customer_name VARCHAR(100),
         customer_phone VARCHAR(20),
+        payment_otp VARCHAR(10),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
-    console.log('Database tables verified successfully.');
+    await query(`
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_otp VARCHAR(10);
+    `);
 
     const resCheck = await query('SELECT COUNT(*) FROM restaurants');
     if (parseInt(resCheck.rows[0].count) === 0) {
-      console.log('Seeding default database records...');
       await seedRestaurants();
     }
   } catch (error) {
@@ -113,12 +116,112 @@ app.use('/api/restaurants', require('./routes/restaurants'));
 app.use('/api/reviews', require('./routes/reviews'));
 app.use('/api/orders', require('./routes/orders'));
 
+const options = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'Zomato Clone API Documentation',
+      version: '1.0.0',
+      description: 'Interactive API sandbox for Zomato Clone endpoints.'
+    },
+    servers: [
+      {
+        url: `http://localhost:${PORT}`
+      }
+    ]
+  },
+  apis: []
+};
+
+const swaggerSpec = swaggerJsdoc(options);
+
+swaggerSpec.paths = {
+  '/api/restaurants': {
+    'get': {
+      'summary': 'Retrieve all restaurants',
+      'parameters': [
+        { 'name': 'search', 'in': 'query', 'schema': { 'type': 'string' } },
+        { 'name': 'veg', 'in': 'query', 'schema': { 'type': 'string', 'enum': ['true', 'false'] } }
+      ],
+      'responses': {
+        '200': { 'description': 'List of restaurants' }
+      }
+    }
+  },
+  '/api/restaurants/import-external': {
+    'post': {
+      'summary': 'Import restaurants from external Zomato API',
+      'responses': {
+        '201': { 'description': 'List of imported restaurants' }
+      }
+    }
+  },
+  '/api/restaurants/{id}': {
+    'get': {
+      'summary': 'Retrieve restaurant details by ID',
+      'parameters': [
+        { 'name': 'id', 'in': 'path', 'required': true, 'schema': { 'type': 'integer' } }
+      ],
+      'responses': {
+        '200': { 'description': 'Restaurant details object' }
+      }
+    }
+  },
+  '/api/orders/create-checkout-session': {
+    'post': {
+      'summary': 'Initialize checkout session and send OTP',
+      'requestBody': {
+        'required': true,
+        'content': {
+          'application/json': {
+            'schema': {
+              'type': 'object',
+              'properties': {
+                'items': { 'type': 'array', 'items': { 'type': 'object' } },
+                'total_price': { 'type': 'number' },
+                'address': { 'type': 'string' },
+                'customer_phone': { 'type': 'string' }
+              }
+            }
+          }
+        }
+      },
+      'responses': {
+        '200': { 'description': 'Checkout session summary' }
+      }
+    }
+  },
+  '/api/orders/confirm-payment': {
+    'post': {
+      'summary': 'Verify OTP and confirm order payment',
+      'requestBody': {
+        'required': true,
+        'content': {
+          'application/json': {
+            'schema': {
+              'type': 'object',
+              'properties': {
+                'sessionId': { 'type': 'string' },
+                'orderId': { 'type': 'integer' },
+                'otp': { 'type': 'string' }
+              }
+            }
+          }
+        }
+      },
+      'responses': {
+        '200': { 'description': 'Confirmation success state' }
+      }
+    }
+  }
+};
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 async function startServer() {
   await initDatabase();
   app.listen(PORT, () => {
-    console.log(`\n===================================================`);
     console.log(`🚀 ZOMATO CLONE BACKEND RUNNING ON PORT ${PORT}`);
-    console.log(`===================================================\n`);
   });
 }
 startServer();

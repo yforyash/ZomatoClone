@@ -128,7 +128,7 @@ export function Checkout() {
       const confirmRes = await fetch(`${API_URL}/api/orders/confirm-payment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: 'mock', orderId: mockPaymentState.orderId })
+        body: JSON.stringify({ sessionId: 'mock', orderId: mockPaymentState.orderId, otp })
       });
       const confirmData = await confirmRes.json();
 
@@ -139,15 +139,16 @@ export function Checkout() {
         clearCart();
         startTracking(mockPaymentState.orderId);
         confetti({ particleCount: 80, spread: 60 });
+        return true;
       } else {
-        alert('Mock payment confirmation failed');
-        setMockPaymentState(null);
+        alert(confirmData.error || 'Mock payment confirmation failed');
         setStep(1);
+        return false;
       }
     } catch (e) {
       alert('Mock payment confirmation failed');
-      setMockPaymentState(null);
       setStep(1);
+      return false;
     }
   };
 
@@ -684,14 +685,17 @@ function MockCardOverlay({ state, onVerify, onCancel }) {
   const [otp, setOtp] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (otp.length !== 6) {
       alert('Please enter a 6-digit OTP');
       return;
     }
     setSubmitting(true);
-    onVerify(otp);
+    const success = await onVerify(otp);
+    if (!success) {
+      setSubmitting(false);
+    }
   };
 
   const cardDigits = state.cardNum.replace(/\s/g, '');

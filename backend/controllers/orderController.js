@@ -3,6 +3,9 @@ const stripe = process.env.STRIPE_SECRET_KEY ? require('stripe')(process.env.STR
 const Razorpay = process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET ? require('razorpay') : null;
 const razorpayInstance = Razorpay ? new Razorpay({ key_id: process.env.RAZORPAY_KEY_ID, key_secret: process.env.RAZORPAY_KEY_SECRET }) : null;
 const crypto = require('crypto');
+const smsService = require('../services/smsService');
+const emailService = require('../services/emailService');
+const authService = require('../services/authService');
 
 async function createOrder(req, res) {
   try {
@@ -92,6 +95,8 @@ async function createCheckoutSession(req, res) {
   try {
     const { items, total_price, address, latitude, longitude, customer_name, customer_phone } = req.body;
 
+    const paymentOtp = Math.floor(100000 + Math.random() * 900000).toString();
+
     const order = await orderService.insertOrder({
       items,
       totalPrice: total_price,
@@ -101,11 +106,25 @@ async function createCheckoutSession(req, res) {
       paymentMethod: 'Card (Stripe)',
       paymentStatus: 'Pending',
       customerName: customer_name,
-      customerPhone: customer_phone
+      customerPhone: customer_phone,
+      paymentOtp: paymentOtp
     });
 
     if (!stripe) {
       console.log('Stripe not configured on backend. Simulating success redirect.');
+      
+      // Send SMS OTP
+      await smsService.sendSMSOTP(customer_phone, paymentOtp);
+      
+      // Send Email OTP as backup if user is logged in
+      const userId = req.headers['x-user-id'];
+      if (userId && userId !== 'Anonymous') {
+        const user = await authService.getUserById(parseInt(userId));
+        if (user && user.email) {
+          await emailService.sendPaymentOTPEmail(user.email, paymentOtp, total_price);
+        }
+      }
+
       return res.json({ mockRedirect: true, orderId: order.id });
     }
 
@@ -152,9 +171,18 @@ async function createCheckoutSession(req, res) {
 
 async function confirmPayment(req, res) {
   try {
-    const { sessionId, orderId } = req.body;
+    const { sessionId, orderId, otp } = req.body;
 
     if (!stripe || sessionId === 'mock') {
+      const order = await orderService.getOrderById(orderId);
+      if (!order) {
+        return res.status(404).json({ error: 'Order not found.' });
+      }
+
+      if (order.payment_otp && order.payment_otp.trim() !== (otp || '').trim()) {
+        return res.status(400).json({ error: 'Invalid OTP' });
+      }
+
       await orderService.updatePaymentStatus(orderId, 'Paid');
       return res.json({ success: true, message: 'Mock payment confirmed successfully.' });
     }

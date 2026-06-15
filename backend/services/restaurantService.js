@@ -37,8 +37,60 @@ async function getRestaurantMenu(restaurantId) {
   return result.rows;
 }
 
+async function insertRestaurant(data) {
+  const existing = await query('SELECT * FROM restaurants WHERE name = $1', [data.name]);
+  if (existing.rows.length > 0) {
+    return existing.rows[0];
+  }
+
+  const result = await query(
+    `INSERT INTO restaurants (name, cuisine, rating, rating_count, cost_for_two, delivery_time, image_url, is_pure_veg, latitude, longitude, address, phone)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+    [
+      data.name,
+      data.cuisine,
+      data.rating,
+      data.rating_count,
+      data.cost_for_two,
+      data.delivery_time,
+      data.image_url,
+      data.is_pure_veg,
+      data.latitude,
+      data.longitude,
+      data.address,
+      data.phone
+    ]
+  );
+  return result.rows[0];
+}
+
+async function insertMenuItem(item) {
+  const existing = await query('SELECT * FROM menu_items WHERE restaurant_id = $1 AND name = $2', [item.restaurant_id, item.name]);
+  if (existing.rows.length > 0) {
+    return existing.rows[0];
+  }
+
+  const result = await query(
+    `INSERT INTO menu_items (restaurant_id, name, price, category, is_veg, is_bestseller, image_url, description)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+    [
+      item.restaurant_id,
+      item.name,
+      item.price,
+      item.category,
+      item.is_veg,
+      item.is_bestseller,
+      item.image_url,
+      item.description
+    ]
+  );
+  return result.rows[0];
+}
+
 module.exports = {
   getRestaurants,
   getRestaurantById,
-  getRestaurantMenu
+  getRestaurantMenu,
+  insertRestaurant,
+  insertMenuItem
 };

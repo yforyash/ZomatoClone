@@ -1,11 +1,11 @@
 const { query } = require('../config/db');
 
 async function insertOrder(orderData) {
-  const { items, totalPrice, address, latitude, longitude, paymentMethod, paymentStatus, customerName, customerPhone } = orderData;
+  const { items, totalPrice, address, latitude, longitude, paymentMethod, paymentStatus, customerName, customerPhone, paymentOtp } = orderData;
   
   const result = await query(
-    `INSERT INTO orders (items, total_price, address, latitude, longitude, payment_method, payment_status, customer_name, customer_phone) 
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+    `INSERT INTO orders (items, total_price, address, latitude, longitude, payment_method, payment_status, customer_name, customer_phone, payment_otp) 
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
     [
       JSON.stringify(items), 
       totalPrice, 
@@ -15,7 +15,8 @@ async function insertOrder(orderData) {
       paymentMethod || 'COD', 
       paymentStatus || 'Paid', 
       customerName || 'Anonymous', 
-      customerPhone || ''
+      customerPhone || '',
+      paymentOtp || null
     ]
   );
   

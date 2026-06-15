@@ -52,4 +52,55 @@ function logFallback(email, resetLink) {
   console.log('=========================================\n');
 }
 
-module.exports = { sendResetEmail };
+async function sendPaymentOTPEmail(email, otp, amount) {
+  const hasSMTPConfig = process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS;
+
+  if (hasSMTPConfig) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: parseInt(process.env.SMTP_PORT || '587'),
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+      });
+
+      const mailOptions = {
+        from: process.env.SMTP_FROM || '"Zomato Clone" <no-reply@zomatoclone.com>',
+        to: email,
+        subject: 'Secure Payment Verification - Zomato Clone',
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 2rem; max-width: 600px; margin: auto; border: 1px solid #ffffff14; border-radius: 12px; background-color: #121215; color: #f3f4f6;">
+            <h2 style="color: #e23744; font-family: 'Outfit', sans-serif;">Secure Bank Gateway OTP</h2>
+            <p>Hello,</p>
+            <p>A card payment verification request of <strong>₹${amount}</strong> was initiated for your Zomato Clone order.</p>
+            <p>Please use the following 6-digit one-time passcode (OTP) to authenticate your transaction:</p>
+            <div style="text-align: center; margin: 2rem 0;">
+              <span style="font-size: 2.2rem; font-weight: 700; color: #e23744; letter-spacing: 6px; padding: 0.5rem 1.5rem; background: #ffffff0a; border-radius: 8px; border: 1px dashed #e23744;">${otp}</span>
+            </div>
+            <p style="color: #9ca3af; font-size: 0.85rem;">If you did not initiate this transaction, please ignore this message.</p>
+          </div>
+        `,
+      };
+
+      await transporter.sendMail(mailOptions);
+      console.log(`📬 [PAYMENT OTP EMAIL SENT VIA SMTP] to: ${email} (OTP: ${otp})`);
+    } catch (err) {
+      console.error('Failed to send payment OTP email via SMTP, falling back to console log:', err.message);
+      logEmailOTPFallback(email, otp, amount);
+    }
+  } else {
+    logEmailOTPFallback(email, otp, amount);
+  }
+}
+
+function logEmailOTPFallback(email, otp, amount) {
+  console.log('\n=========================================');
+  console.log(`📬 [EMAIL OTP LOG (MOCK)] to: ${email}`);
+  console.log(`Secure payment OTP for ₹${amount} is: ${otp}`);
+  console.log('=========================================\n');
+}
+
+module.exports = { sendResetEmail, sendPaymentOTPEmail };

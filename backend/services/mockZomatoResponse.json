@@ -1,0 +1,68 @@
+{
+  "page_data": {
+    "sections": {
+      "SECTION_SEARCH_RESULT": [
+        {
+          "type": "restaurant",
+          "info": {
+            "resId": 901234,
+            "name": "Diggin",
+            "cuisine": [
+              { "name": "Italian" },
+              { "name": "Continental" }
+            ],
+            "rating": {
+              "aggregate_rating": "4.4"
+            },
+            "image": {
+              "url": "https://images.unsplash.com/photo-1552566626-52f8b828add9?w=500"
+            },
+            "locality": {
+              "name": "Chanakyapuri, New Delhi"
+            }
+          }
+        },
+        {
+          "type": "restaurant",
+          "info": {
+            "resId": 901235,
+            "name": "Farzi Cafe",
+            "cuisine": [
+              { "name": "Modern Indian" },
+              { "name": "Fusion Food" }
+            ],
+            "rating": {
+              "aggregate_rating": "4.2"
+            },
+            "image": {
+              "url": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=500"
+            },
+            "locality": {
+              "name": "Cyber Hub, Gurugram"
+            }
+          }
+        },
+        {
+          "type": "restaurant",
+          "info": {
+            "resId": 901236,
+            "name": "The Big Chill Cafe",
+            "cuisine": [
+              { "name": "Italian" },
+              { "name": "Desserts" }
+            ],
+            "rating": {
+              "aggregate_rating": "4.7"
+            },
+            "image": {
+              "url": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500"
+            },
+            "locality": {
+              "name": "Khan Market, New Delhi"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

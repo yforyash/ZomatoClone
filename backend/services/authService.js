@@ -36,11 +36,17 @@ async function deleteResetTokens(email) {
   await query('DELETE FROM password_resets WHERE LOWER(email) = LOWER($1)', [email]);
 }
 
+async function getUserById(id) {
+  const result = await query('SELECT * FROM users WHERE id = $1', [id]);
+  return result.rows[0];
+}
+
 module.exports = {
   getUserByEmail,
   createUser,
   createPasswordReset,
   getValidResetToken,
   updatePassword,
-  deleteResetTokens
+  deleteResetTokens,
+  getUserById
 };
