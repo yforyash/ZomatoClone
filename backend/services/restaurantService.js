@@ -87,10 +87,15 @@ async function insertMenuItem(item) {
   return result.rows[0];
 }
 
+async function updateRestaurantRating(id, rating, count) {
+  await query('UPDATE restaurants SET rating = $1, rating_count = $2 WHERE id = $3', [rating, count, id]);
+}
+
 module.exports = {
   getRestaurants,
   getRestaurantById,
   getRestaurantMenu,
   insertRestaurant,
-  insertMenuItem
+  insertMenuItem,
+  updateRestaurantRating
 };

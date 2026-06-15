@@ -6,6 +6,27 @@ import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
 import { UniversalMap } from '../components/UniversalMap';
 
+function StarRating({ rating, size = 16 }) {
+  const rounded = parseFloat(rating) || 0;
+  return (
+    <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
+      {[...Array(5)].map((_, i) => {
+        const fillPercent = Math.max(0, Math.min(100, (rounded - i) * 100));
+        return (
+          <div key={i} style={{ position: 'relative', display: 'inline-block', width: size, height: size }}>
+            <Star size={size} style={{ color: '#475569', position: 'absolute', top: 0, left: 0 }} />
+            {fillPercent > 0 && (
+              <div style={{ position: 'absolute', top: 0, left: 0, width: `${fillPercent}%`, overflow: 'hidden', height: '100%' }}>
+                <Star size={size} style={{ color: 'var(--rating-yellow)' }} fill="var(--rating-yellow)" />
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function ReviewForm({ restaurantId, onReviewSubmitted }) {
   const [tags, setTags] = useState([]);
   const [success, setSuccess] = useState(false);
@@ -139,6 +160,10 @@ export function RestaurantDetail() {
           <div>
             <h1 className="restaurant-hero-title">{restaurant.name}</h1>
             <p className="restaurant-hero-cuisines">{restaurant.cuisine}</p>
+            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', margin: '0.4rem 0' }}>
+              <StarRating rating={restaurant.rating} size={16} />
+              <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{parseFloat(restaurant.rating).toFixed(1)} / 5</span>
+            </div>
             <p className="restaurant-hero-address"><MapPin size={12} style={{ display: 'inline', marginRight: '0.3rem' }} />{restaurant.address}</p>
           </div>
           <div className="restaurant-rating-stats">
@@ -218,12 +243,55 @@ export function RestaurantDetail() {
               )}
 
               {tab === 'overview' && (
-                <div>
-                  <h3 style={{ marginBottom: '0.8rem' }}>About this kitchen</h3>
-                  <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>Elegantly serving local dishes prepared fresh on order. Ideal for cozy dining experiences at home.</p>
-                  <p style={{ fontWeight: 600, marginBottom: '1.5rem' }}><Phone size={14} style={{ display: 'inline', marginRight: '0.3rem' }} /> Phone: {restaurant.phone}</p>
-                  <div style={{ height: '300px', borderRadius: '12px', overflow: 'hidden' }}>
-                    <UniversalMap center={[parseFloat(restaurant.latitude), parseFloat(restaurant.longitude)]} markerTitle={restaurant.name} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                  <div style={{
+                    display: 'flex',
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '12px',
+                    padding: '1.5rem',
+                    gap: '2rem',
+                    alignItems: 'center',
+                    flexWrap: 'wrap'
+                  }}>
+                    <div style={{ textAlign: 'center', minWidth: '150px' }}>
+                      <div style={{ fontSize: '3rem', fontWeight: 700, color: 'var(--accent)', lineHeight: 1 }}>
+                        {parseFloat(restaurant.rating).toFixed(1)}
+                      </div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '0.2rem 0 0.5rem' }}>
+                        out of 5
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'center' }}>
+                        <StarRating rating={restaurant.rating} size={20} />
+                      </div>
+                      <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.5rem' }}>
+                        {restaurant.rating_count} customer ratings
+                      </div>
+                    </div>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: '250px' }}>
+                      {[5, 4, 3, 2, 1].map(starsCount => {
+                        const count = reviews.filter(r => Math.round(r.rating) === starsCount).length;
+                        const percentage = reviews.length > 0 ? (count / reviews.length) * 100 : 0;
+                        return (
+                          <div key={starsCount} style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', fontSize: '0.85rem' }}>
+                            <span style={{ width: '45px', color: 'var(--text-secondary)', textAlign: 'right' }}>{starsCount} Star</span>
+                            <div style={{ flex: 1, height: '8px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden' }}>
+                              <div style={{ height: '100%', background: 'var(--rating-yellow)', width: `${percentage}%`, borderRadius: '4px' }}></div>
+                            </div>
+                            <span style={{ width: '35px', color: 'var(--text-muted)' }}>{count}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 style={{ marginBottom: '0.8rem' }}>About this kitchen</h3>
+                    <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>Elegantly serving local dishes prepared fresh on order. Ideal for cozy dining experiences at home.</p>
+                    <p style={{ fontWeight: 600, marginBottom: '1.5rem' }}><Phone size={14} style={{ display: 'inline', marginRight: '0.3rem' }} /> Phone: {restaurant.phone}</p>
+                    <div style={{ height: '300px', borderRadius: '12px', overflow: 'hidden' }}>
+                      <UniversalMap center={[parseFloat(restaurant.latitude), parseFloat(restaurant.longitude)]} markerTitle={restaurant.name} />
+                    </div>
                   </div>
                 </div>
               )}
