@@ -757,7 +757,7 @@ async function seedRestaurants() {
     console.log(`Successfully bulk-inserted ${reviewsData.length} reviews.`);
     await query(
       "INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, password_hash = EXCLUDED.password_hash",
-      ['Nishchay Agarwal', 'yashagarwal1705@gmail.com', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9']
+      ['Nishchay Agarwal', 'yashagarwal1705@gmail.com', 'ac5053fa510f5523c83cf396c8b445375bd43898dcfa927432a94ed55d5a25b0']
     );
     console.log('Database seeding process completed successfully!');
   } catch (error) {

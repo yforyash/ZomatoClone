@@ -21,37 +21,18 @@ const handlePhoneChange = (e, setFieldValue) => {
 
 const handleCardNumChange = (e, setFieldValue) => {
   const value = e.target.value;
-  const isDelete = e.nativeEvent?.inputType === 'deleteContentBackward';
   const clean = value.replace(/\D/g, '').substring(0, 16);
-  
-  let formatted = '';
-  const parts = [];
-  for (let i = 0; i < clean.length; i += 4) {
-    parts.push(clean.substring(i, i + 4));
-  }
-  
-  if (parts.length > 0) {
-    formatted = parts.join(' ');
-    const lastPart = parts[parts.length - 1];
-    if (lastPart.length === 4 && !isDelete && clean.length < 16) {
-      formatted += ' ';
-    }
-  }
+  const formatted = clean.match(/.{1,4}/g)?.join(' ') || '';
   setFieldValue('cardNum', formatted);
 };
 
 const handleExpiryChange = (e, setFieldValue) => {
   const value = e.target.value;
-  const isDelete = e.nativeEvent?.inputType === 'deleteContentBackward';
   const clean = value.replace(/\D/g, '').substring(0, 4);
-  
   let formatted = '';
   if (clean.length > 0) {
     if (clean.length <= 2) {
       formatted = clean;
-      if (clean.length === 2 && !isDelete) {
-        formatted += '/';
-      }
     } else {
       formatted = `${clean.slice(0, 2)}/${clean.slice(2, 4)}`;
     }
@@ -413,7 +394,7 @@ export function Checkout() {
           <p style={{ textAlign: 'center', padding: '3rem 0' }}>Your basket is empty.</p>
         ) : (
           <Formik
-            initialValues={{ name: '', phone: '', address: 'Connaught Place, Delhi', paymentMethod: 'COD', cardNum: '', cvv: '', upiId: '' }}
+            initialValues={{ name: '', phone: '', address: 'Connaught Place, Delhi', paymentMethod: 'COD', cardNum: '', expiry: '', cvv: '', upiId: '' }}
             validationSchema={CheckoutSchema}
             onSubmit={handlePlaceOrder}
           >
