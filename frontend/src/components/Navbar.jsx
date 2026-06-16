@@ -29,6 +29,8 @@ export function Navbar() {
 
   const handleLogout = () => {
     localStorage.removeItem('z_user');
+    localStorage.removeItem('z_cart');
+    localStorage.removeItem('z_res');
     window.location.href = '/';
   };
 
