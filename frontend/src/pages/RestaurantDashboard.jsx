@@ -1,14 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchRestaurantStats, fetchOrders, requestWithdrawal } from '../services/api';
+import { fetchRestaurantStats, fetchOrders, requestWithdrawal, fetchReviews, fetchTickets, createTicket } from '../services/api';
 import { UniversalMap } from '../components/UniversalMap';
-import { Store, DollarSign, ListOrdered, Navigation, ArrowDownCircle, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Store, DollarSign, ListOrdered, Navigation, ArrowDownCircle, CheckCircle2, AlertCircle, MessageSquare, HelpCircle, Star } from 'lucide-react';
 import _ from 'lodash';
 
 export function RestaurantDashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [orders, setOrders] = useState([]);
+  const [reviews, setReviews] = useState([]);
+  const [tickets, setTickets] = useState([]);
+  const [activeTab, setActiveTab] = useState('orders');
+  const [loading, setLoading] = useState(true);
+
+  // Tracking details
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [riderPos, setRiderPos] = useState(null);
   const [restPos, setRestPos] = useState(null);
@@ -22,6 +28,11 @@ export function RestaurantDashboard() {
   const [withdrawDetails, setWithdrawDetails] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Ticket Form state
+  const [ticketSubject, setTicketSubject] = useState('');
+  const [ticketMessage, setTicketMessage] = useState('');
+  const [ticketSuccess, setTicketSuccess] = useState('');
 
   const sseRef = useRef(null);
 
@@ -38,13 +49,26 @@ export function RestaurantDashboard() {
 
   const loadDashboardData = async () => {
     try {
+      setLoading(true);
+      
       const statsData = await fetchRestaurantStats();
       setStats(statsData);
 
       const ordersData = await fetchOrders();
       setOrders(ordersData);
+
+      if (user?.restaurant_id) {
+        const reviewsData = await fetchReviews(user.restaurant_id);
+        setReviews(Array.isArray(reviewsData) ? reviewsData : []);
+      }
+
+      const ticketsData = await fetchTickets();
+      setTickets(Array.isArray(ticketsData) ? ticketsData : []);
+
     } catch (err) {
       console.error('Failed to load dashboard:', err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -81,7 +105,6 @@ export function RestaurantDashboard() {
         }
         if (data.status === 'Delivered') {
           source.close();
-          // Reload orders list to update status
           setTimeout(loadDashboardData, 1000);
         }
       } catch (err) {
@@ -112,7 +135,7 @@ export function RestaurantDashboard() {
     }
 
     if (!withdrawDetails) {
-      setErrorMsg('Please enter payment details (UPI ID or Bank Details).');
+      setErrorMsg('Please enter payment details.');
       return;
     }
 
@@ -127,7 +150,31 @@ export function RestaurantDashboard() {
     }
   };
 
-  if (!stats) return <div className="spinner-container"><div className="spinner"></div></div>;
+  const handleFileTicket = async (e) => {
+    e.preventDefault();
+    setTicketSuccess('');
+    if (!ticketSubject || !ticketMessage) {
+      alert('Please fill out all fields.');
+      return;
+    }
+    try {
+      await createTicket(ticketSubject, ticketMessage);
+      setTicketSuccess('Support ticket filed successfully!');
+      setTicketSubject('');
+      setTicketMessage('');
+      loadDashboardData();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  if (loading || !stats) {
+    return (
+      <div className="spinner-container">
+        <div className="spinner"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="container" style={{ paddingBottom: '3rem' }}>
@@ -169,18 +216,84 @@ export function RestaurantDashboard() {
         </div>
       </div>
 
-      <div className="checkout-layout">
-        
-        {/* Left column: Orders list & Withdrawal */}
-        <div className="checkout-form-section" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          
-          {/* Incoming/Active Orders */}
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--border)', marginBottom: '1.5rem', paddingBottom: '0.5rem', flexWrap: 'wrap' }}>
+        <button 
+          onClick={() => setActiveTab('orders')} 
+          style={{
+            background: 'none',
+            border: 'none',
+            color: activeTab === 'orders' ? 'var(--accent)' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'orders' ? '600' : '400',
+            borderBottom: activeTab === 'orders' ? '2px solid var(--accent)' : 'none',
+            padding: '0.5rem 1.2rem',
+            cursor: 'pointer',
+            fontSize: '1rem',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          Orders & Logistics ({orders?.length || 0})
+        </button>
+        <button 
+          onClick={() => setActiveTab('finances')} 
+          style={{
+            background: 'none',
+            border: 'none',
+            color: activeTab === 'finances' ? 'var(--accent)' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'finances' ? '600' : '400',
+            borderBottom: activeTab === 'finances' ? '2px solid var(--accent)' : 'none',
+            padding: '0.5rem 1.2rem',
+            cursor: 'pointer',
+            fontSize: '1rem',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          Manage Finances
+        </button>
+        <button 
+          onClick={() => setActiveTab('reviews')} 
+          style={{
+            background: 'none',
+            border: 'none',
+            color: activeTab === 'reviews' ? 'var(--accent)' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'reviews' ? '600' : '400',
+            borderBottom: activeTab === 'reviews' ? '2px solid var(--accent)' : 'none',
+            padding: '0.5rem 1.2rem',
+            cursor: 'pointer',
+            fontSize: '1rem',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          Customer Reviews ({reviews?.length || 0})
+        </button>
+        <button 
+          onClick={() => setActiveTab('support')} 
+          style={{
+            background: 'none',
+            border: 'none',
+            color: activeTab === 'support' ? 'var(--accent)' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'support' ? '600' : '400',
+            borderBottom: activeTab === 'support' ? '2px solid var(--accent)' : 'none',
+            padding: '0.5rem 1.2rem',
+            cursor: 'pointer',
+            fontSize: '1rem',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          Support Complaints ({tickets?.length || 0})
+        </button>
+      </div>
+
+      {/* Tab Contents */}
+      {activeTab === 'orders' && (
+        <div className="checkout-layout">
+          {/* Left Column: Orders List */}
           <div className="sidebar-panel">
             <h3>Active & Past Orders</h3>
             {orders.length === 0 ? (
               <p style={{ color: 'var(--text-secondary)' }}>No orders placed with your restaurant yet.</p>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxH: '500px', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '500px', overflowY: 'auto' }}>
                 {orders.map((order) => (
                   <div 
                     key={order.id} 
@@ -211,11 +324,47 @@ export function RestaurantDashboard() {
             )}
           </div>
 
-          {/* Withdrawal Section */}
+          {/* Right Column: Tracking Map */}
+          <div className="checkout-summary-section">
+            <div className="sidebar-panel" style={{ minHeight: '400px', display: 'flex', flexDirection: 'column' }}>
+              <h3>Delivery & Location Tracking</h3>
+              {selectedOrder ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1 }}>
+                  <div style={{ padding: '0.8rem', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '0.9rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent)', fontWeight: 600, marginBottom: '0.4rem' }}>
+                      <Navigation size={16} /> Status: {trackingStatus}
+                    </div>
+                    <div>Rider Assigned: <strong>{deliveryBoy?.name || selectedOrder.delivery_boy_name}</strong></div>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Vehicle: {deliveryBoy?.vehicle || selectedOrder.delivery_boy_vehicle}</div>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Customer Drop Address: {selectedOrder.address}</div>
+                  </div>
+                  <div style={{ height: '280px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                    <UniversalMap 
+                      center={customerPos || [28.6139, 77.2090]} 
+                      markerTitle="Drop Location (Customer)"
+                      riderPos={riderPos}
+                      restPos={restPos}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: '3rem 1rem', color: 'var(--text-secondary)' }}>
+                  <Navigation size={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
+                  <p style={{ textAlign: 'center', margin: 0 }}>Select an order from the list to view drop coordinates and rider updates.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'finances' && (
+        <div className="checkout-layout">
+          {/* Request Withdrawal */}
           <div className="sidebar-panel">
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
               <ArrowDownCircle size={20} style={{ color: 'var(--accent)' }} />
-              <h3 style={{ margin: 0 }}>Withdraw Earnings</h3>
+              <h3 style={{ margin: 0 }}>Request Payout</h3>
             </div>
             
             {successMsg && <div className="tracking-status-banner" style={{ background: 'rgba(36, 150, 63, 0.1)', color: 'var(--veg-color)', marginBottom: '1rem' }}><CheckCircle2 size={16} />{successMsg}</div>}
@@ -260,69 +409,135 @@ export function RestaurantDashboard() {
                 />
               </div>
 
-              <button type="submit" className="checkout-btn">Request Payout</button>
+              <button type="submit" className="checkout-btn">Submit Request</button>
             </form>
           </div>
 
-        </div>
-
-        {/* Right column: Delivery Tracking Map & Info */}
-        <div className="checkout-summary-section">
-          <div className="sidebar-panel" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: '450px' }}>
-            <h3>Delivery & Location Tracking</h3>
-            
-            {selectedOrder ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1 }}>
-                
-                {/* Rider Details Banner */}
-                <div style={{ padding: '0.8rem', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '0.9rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent)', fontWeight: 600, marginBottom: '0.4rem' }}>
-                    <Navigation size={16} /> Status: {trackingStatus}
+          {/* Payout History */}
+          <div className="sidebar-panel">
+            <h3>Payout History</h3>
+            {stats.withdrawals.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '350px', overflowY: 'auto' }}>
+                {stats.withdrawals.map((w) => (
+                  <div key={w.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.8rem 0', borderBottom: '1px solid var(--border-color)', fontSize: '0.85rem' }}>
+                    <div>
+                      <strong>₹{w.amount}</strong> via {w.payment_method}
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>Details: {w.details}</div>
+                    </div>
+                    <span style={{ color: 'var(--veg-color)', fontWeight: '600' }}>{w.status}</span>
                   </div>
-                  <div>Rider: <strong>{deliveryBoy?.name}</strong> ({deliveryBoy?.phone})</div>
-                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Vehicle: {deliveryBoy?.vehicle}</div>
-                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Customer Drop Address: {selectedOrder.address}</div>
-                </div>
-
-                {/* Tracking Map */}
-                <div style={{ height: '300px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
-                  <UniversalMap 
-                    center={customerPos || [28.6139, 77.2090]} 
-                    markerTitle="Drop Location (Customer)"
-                    riderPos={riderPos}
-                    restPos={restPos}
-                  />
-                </div>
+                ))}
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: '3rem 1rem', color: 'var(--text-secondary)' }}>
-                <Navigation size={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
-                <p style={{ textAlign: 'center', margin: 0 }}>Select an order from the list to view customer drop location, delivery boy status, and track real-time coordinates.</p>
-              </div>
+              <p style={{ color: 'var(--text-secondary)' }}>No payouts requested yet.</p>
             )}
+          </div>
+        </div>
+      )}
 
-            {/* Payouts list */}
-            {stats.withdrawals.length > 0 && (
-              <div style={{ marginTop: '2rem' }}>
-                <h4 style={{ margin: '0 0 1rem 0' }}>Payout History</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '180px', overflowY: 'auto' }}>
-                  {stats.withdrawals.map((w) => (
-                    <div key={w.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid var(--border-color)', fontSize: '0.85rem' }}>
-                      <div>
-                        <strong>₹{w.amount}</strong> via {w.payment_method}
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Details: {w.details}</div>
+      {activeTab === 'reviews' && (
+        <div className="card" style={{ padding: '1.5rem' }}>
+          <h3>Customer Reviews & Feedback</h3>
+          {reviews.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem', marginTop: '1rem' }}>
+              {reviews.map((r) => (
+                <div key={r.id} style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                    <strong>{r.reviewer_name}</strong>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', background: '#ffeeb4', color: '#855800', padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 700 }}>
+                      ★ {r.rating}
+                    </span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{r.comment}</p>
+                  {r.tags && (
+                    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                      {r.tags.split(',').map((tag, idx) => (
+                        <span key={idx} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: '20px', padding: '0.1rem 0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{tag}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p style={{ color: 'var(--text-secondary)', padding: '2rem 0', textAlign: 'center' }}>No customer reviews posted for your restaurant yet.</p>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'support' && (
+        <div className="checkout-layout">
+          {/* File ticket */}
+          <div className="sidebar-panel">
+            <h3 style={{ margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <HelpCircle size={20} style={{ color: 'var(--accent)' }} /> Contact Partner Support
+            </h3>
+            <form onSubmit={handleFileTicket}>
+              {ticketSuccess && <div className="tracking-status-banner" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', marginBottom: '1rem' }}>{ticketSuccess}</div>}
+
+              <div className="form-group">
+                <label className="form-label">Subject / Issue Summary</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. Delayed payout or rider issue"
+                  value={ticketSubject}
+                  onChange={(e) => setTicketSubject(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Detailed Message</label>
+                <textarea
+                  className="form-input"
+                  placeholder="Explain your problem here..."
+                  rows="4"
+                  value={ticketMessage}
+                  onChange={(e) => setTicketMessage(e.target.value)}
+                  required
+                />
+              </div>
+              <button type="submit" className="checkout-btn" style={{ width: '100%', padding: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                <MessageSquare size={18} /> Submit Complaint
+              </button>
+            </form>
+          </div>
+
+          {/* Tickets List */}
+          <div className="sidebar-panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <h3>Support History</h3>
+            <div style={{ maxHeight: '450px', overflowY: 'auto' }}>
+              {tickets.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {tickets.map((t) => (
+                    <div key={t.id} style={{ border: '1px solid var(--border)', borderRadius: '8px', padding: '1rem', background: 'rgba(255,255,255,0.01)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <strong style={{ fontSize: '0.95rem' }}>{t.subject}</strong>
+                        <span style={{
+                          padding: '0.15rem 0.5rem',
+                          borderRadius: '12px',
+                          fontSize: '0.75rem',
+                          fontWeight: '600',
+                          backgroundColor: t.status === 'Open' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                          color: t.status === 'Open' ? '#ef4444' : '#10b981'
+                        }}>
+                          {t.status}
+                        </span>
                       </div>
-                      <span style={{ color: 'var(--veg-color)' }}>{w.status}</span>
+                      <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t.message}</p>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                        Filed on: {new Date(t.created_at).toLocaleString('en-IN')}
+                      </div>
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
-            
+              ) : (
+                <p style={{ color: 'var(--text-secondary)' }}>No support complaints filed yet.</p>
+              )}
+            </div>
           </div>
         </div>
-
-      </div>
+      )}
     </div>
   );
 }

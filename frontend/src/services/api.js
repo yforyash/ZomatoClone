@@ -240,3 +240,111 @@ export async function fetchAdminStats() {
   });
   return await res.json();
 }
+
+export async function fetchWallet() {
+  const res = await fetch(`${BASE_URL}/user/wallet`, {
+    headers: {
+      'x-user-id': localStorage.getItem('z_user') 
+        ? JSON.parse(localStorage.getItem('z_user')).id 
+        : 'Anonymous'
+    }
+  });
+  return await res.json();
+}
+
+export async function addWalletFunds(amount) {
+  const res = await fetch(`${BASE_URL}/user/wallet/add`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-id': localStorage.getItem('z_user') 
+        ? JSON.parse(localStorage.getItem('z_user')).id 
+        : 'Anonymous'
+    },
+    body: JSON.stringify({ amount })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to add funds.');
+  return data;
+}
+
+export async function fetchTickets() {
+  const res = await fetch(`${BASE_URL}/user/tickets`, {
+    headers: {
+      'x-user-id': localStorage.getItem('z_user') 
+        ? JSON.parse(localStorage.getItem('z_user')).id 
+        : 'Anonymous'
+    }
+  });
+  return await res.json();
+}
+
+export async function createTicket(subject, message) {
+  const res = await fetch(`${BASE_URL}/user/tickets`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-id': localStorage.getItem('z_user') 
+        ? JSON.parse(localStorage.getItem('z_user')).id 
+        : 'Anonymous'
+    },
+    body: JSON.stringify({ subject, message })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to file support ticket.');
+  return data;
+}
+
+export async function fetchAdminTickets() {
+  const res = await fetch(`${BASE_URL}/admin/tickets`, {
+    headers: {
+      'x-user-id': localStorage.getItem('z_user') 
+        ? JSON.parse(localStorage.getItem('z_user')).id 
+        : 'Anonymous'
+    }
+  });
+  return await res.json();
+}
+
+export async function resolveTicket(id) {
+  const res = await fetch(`${BASE_URL}/admin/tickets/${id}/resolve`, {
+    method: 'POST',
+    headers: {
+      'x-user-id': localStorage.getItem('z_user') 
+        ? JSON.parse(localStorage.getItem('z_user')).id 
+        : 'Anonymous'
+    }
+  });
+  return await res.json();
+}
+
+export async function assignRider(orderId, riderName, riderPhone, riderVehicle) {
+  const res = await fetch(`${BASE_URL}/admin/orders/${orderId}/assign-rider`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-id': localStorage.getItem('z_user') 
+        ? JSON.parse(localStorage.getItem('z_user')).id 
+        : 'Anonymous'
+    },
+    body: JSON.stringify({ riderName, riderPhone, riderVehicle })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to reassign delivery rider.');
+  return data;
+}
+
+export async function refundOrder(orderId) {
+  const res = await fetch(`${BASE_URL}/admin/orders/${orderId}/refund`, {
+    method: 'POST',
+    headers: {
+      'x-user-id': localStorage.getItem('z_user') 
+        ? JSON.parse(localStorage.getItem('z_user')).id 
+        : 'Anonymous'
+    }
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to process refund.');
+  return data;
+}
+

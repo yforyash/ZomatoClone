@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import { UtensilsCrossed, Home as HomeIcon, TrendingUp, ShoppingCart, LogIn, LogOut, ShieldAlert, Store } from 'lucide-react';
+import { UtensilsCrossed, Home as HomeIcon, TrendingUp, ShoppingCart, LogIn, LogOut, ShieldAlert, Store, Wallet } from 'lucide-react';
 import _ from 'lodash';
 
 export function Navbar() {
@@ -27,6 +27,7 @@ export function Navbar() {
           <>
             <Link to="/" className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}><HomeIcon size={18} /> Home</Link>
             <Link to="/analytics" className={`nav-link ${location.pathname === '/analytics' ? 'active' : ''}`}><TrendingUp size={18} /> Analytics</Link>
+            <Link to="/wallet" className={`nav-link ${location.pathname === '/wallet' ? 'active' : ''}`}><Wallet size={18} /> Wallet & Support</Link>
             <Link to="/checkout" className={`nav-link ${location.pathname === '/checkout' ? 'active' : ''}`}><ShoppingCart size={18} /> Cart {cartCount > 0 && <span className="nav-cart-badge">{cartCount}</span>}</Link>
           </>
         )}

@@ -9,6 +9,7 @@ import { Analytics } from './pages/Analytics';
 import { Auth } from './pages/Auth';
 import { RestaurantDashboard } from './pages/RestaurantDashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { WalletSupport } from './pages/WalletSupport';
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
             <Route path="/login" element={<Auth />} />
             <Route path="/restaurant-dashboard" element={<RestaurantDashboard />} />
             <Route path="/admin-dashboard" element={<AdminDashboard />} />
+            <Route path="/wallet" element={<WalletSupport />} />
           </Routes>
         </div>
       </Router>
