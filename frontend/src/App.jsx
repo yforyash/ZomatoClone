@@ -7,6 +7,8 @@ import { RestaurantDetail } from './pages/RestaurantDetail';
 import { Checkout } from './pages/Checkout';
 import { Analytics } from './pages/Analytics';
 import { Auth } from './pages/Auth';
+import { RestaurantDashboard } from './pages/RestaurantDashboard';
+import { AdminDashboard } from './pages/AdminDashboard';
 
 function App() {
   return (
@@ -20,6 +22,8 @@ function App() {
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/login" element={<Auth />} />
+            <Route path="/restaurant-dashboard" element={<RestaurantDashboard />} />
+            <Route path="/admin-dashboard" element={<AdminDashboard />} />
           </Routes>
         </div>
       </Router>

@@ -1715,3 +1715,111 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/* ==========================================================================
+   Mobile Responsiveness (max-width: 768px)
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  /* Navbar */
+  .navbar {
+    flex-direction: column;
+    gap: 0.8rem;
+    padding: 1rem;
+    align-items: center;
+  }
+  .nav-links {
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+  }
+  .nav-link {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
+  }
+
+  /* Grids & Cards */
+  .restaurant-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1.5rem;
+  }
+  .analytics-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem;
+  }
+  
+  /* Details Hero Block */
+  .restaurant-hero-content {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 1.2rem !important;
+    padding: 1.5rem 1rem !important;
+  }
+  .restaurant-hero-title {
+    font-size: 1.8rem !important;
+  }
+  .restaurant-rating-stats {
+    width: 100% !important;
+    justify-content: space-between !important;
+  }
+  
+  /* Detail Page Layout & Swipeable Categories */
+  .detail-main-content {
+    flex-direction: column !important;
+    gap: 1.5rem !important;
+  }
+  .menu-category-sidebar {
+    width: 100% !important;
+    position: relative !important;
+    top: 0 !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    padding-bottom: 0.6rem !important;
+    padding-right: 0 !important;
+    margin-bottom: 1rem !important;
+    white-space: nowrap !important;
+    gap: 0.5rem !important;
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+  }
+  .menu-category-sidebar::-webkit-scrollbar {
+    display: none !important;
+  }
+  .menu-category-sidebar span {
+    display: none !important; /* Hide "CATEGORIES" header on mobile */
+  }
+  .menu-category-sidebar .filter-btn {
+    padding: 0.4rem 0.8rem !important;
+    background: var(--bg-secondary) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 20px !important;
+    font-size: 0.8rem !important;
+    display: inline-block !important;
+  }
+
+  /* Checkout Layout */
+  .checkout-layout {
+    grid-template-columns: 1fr !important;
+    gap: 1.5rem !important;
+  }
+
+  /* Form spacing */
+  .step-card {
+    padding: 1rem !important;
+  }
+
+  /* Tables */
+  .table th, .table td {
+    padding: 0.5rem 0.25rem !important;
+    font-size: 0.8rem !important;
+  }
+  
+  /* Modal Overlays */
+  .mock-razorpay-card, .mock-bank-card {
+    width: 95% !important;
+    padding: 1.5rem !important;
+  }
+}
+

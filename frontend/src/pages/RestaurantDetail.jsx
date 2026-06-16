@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import { MapPin, Star, Phone, CheckCircle2 } from 'lucide-react';
+import { MapPin, Star, Phone, CheckCircle2, Heart } from 'lucide-react';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
 import * as Yup from 'yup';
 import { UniversalMap } from '../components/UniversalMap';
+import { checkFavorite, toggleFavorite } from '../services/api';
 
 function StarRating({ rating, size = 16 }) {
   const rounded = parseFloat(rating) || 0;
@@ -111,6 +112,34 @@ export function RestaurantDetail() {
   const [reviews, setReviews] = useState([]);
   const [tab, setTab] = useState('menu');
   const [loading, setLoading] = useState(true);
+  const [isFavorited, setIsFavorited] = useState(false);
+
+  const userStr = localStorage.getItem('z_user');
+  const user = userStr ? JSON.parse(userStr) : null;
+
+  const checkFavStatus = async () => {
+    if (user) {
+      try {
+        const res = await checkFavorite(id);
+        setIsFavorited(!!res.favorited);
+      } catch (err) {
+        console.error('Failed to check favorite status:', err);
+      }
+    }
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    try {
+      const res = await toggleFavorite(id);
+      setIsFavorited(res.favorited);
+    } catch (err) {
+      console.error('Failed to toggle favorite:', err);
+    }
+  };
 
   const fetchDetails = async () => {
     try {
@@ -137,7 +166,10 @@ export function RestaurantDetail() {
     }
   };
 
-  useEffect(() => { fetchDetails(); }, [id]);
+  useEffect(() => { 
+    fetchDetails(); 
+    checkFavStatus();
+  }, [id]);
 
   if (loading) return <div className="spinner-container"><div className="spinner"></div></div>;
 
@@ -158,8 +190,34 @@ export function RestaurantDetail() {
         <div className="restaurant-hero-overlay"></div>
         <div className="restaurant-hero-content">
           <div>
-            <h1 className="restaurant-hero-title">{restaurant.name}</h1>
-            <p className="restaurant-hero-cuisines">{restaurant.cuisine}</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+              <h1 className="restaurant-hero-title" style={{ margin: 0 }}>{restaurant.name}</h1>
+              {user && (
+                <button 
+                  onClick={handleToggleFavorite}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.15)',
+                    border: 'none',
+                    borderRadius: '50%',
+                    width: '38px',
+                    height: '38px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    backdropFilter: 'blur(4px)',
+                    color: isFavorited ? '#ef4444' : '#ffffff'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                  title={isFavorited ? "Remove from Favorites" : "Add to Favorites"}
+                >
+                  <Heart size={20} fill={isFavorited ? '#ef4444' : 'none'} style={{ transition: 'fill 0.2s ease' }} />
+                </button>
+              )}
+            </div>
+            <p className="restaurant-hero-cuisines" style={{ marginTop: '0.4rem' }}>{restaurant.cuisine}</p>
             <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', margin: '0.4rem 0' }}>
               <StarRating rating={restaurant.rating} size={16} />
               <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{parseFloat(restaurant.rating).toFixed(1)} / 5</span>
@@ -188,10 +246,10 @@ export function RestaurantDetail() {
 
         <div className="detail-layout">
           
-          <div className="detail-main-content" style={{ display: 'flex', gap: '1.5rem' }}>
+          <div className="detail-main-content">
             
             {tab === 'menu' && Object.keys(categories).length > 0 && (
-              <div style={{ width: '150px', position: 'sticky', top: '100px', height: 'fit-content', display: 'flex', flexDirection: 'column', gap: '0.6rem', borderRight: '1px solid var(--border-color)', paddingRight: '0.8rem' }}>
+              <div className="menu-category-sidebar">
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>CATEGORIES</span>
                 {Object.keys(categories).map(cat => (
                   <button key={cat} onClick={() => scrollToCategory(cat)} className="filter-btn" style={{ border: 'none', background: 'transparent', textAlign: 'left', padding: '0.3rem 0', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>

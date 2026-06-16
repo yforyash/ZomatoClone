@@ -28,7 +28,7 @@ async function login(req, res) {
       return res.status(400).json({ error: 'Invalid email or password' });
     }
     
-    res.json({ id: user.id, name: user.name, email: user.email });
+    res.json({ id: user.id, name: user.name, email: user.email, role: user.role, restaurant_id: user.restaurant_id });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

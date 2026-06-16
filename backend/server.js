@@ -98,14 +98,78 @@ async function initDatabase() {
       );
     `);
 
+    // Schema alterations
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';`);
+    await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS restaurant_id INTEGER REFERENCES restaurants(id) ON DELETE SET NULL;`);
+    
+    await query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;`);
+    await query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS restaurant_id INTEGER REFERENCES restaurants(id) ON DELETE SET NULL;`);
+    await query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_otp VARCHAR(10);`);
+    await query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_boy_name VARCHAR(100);`);
+    await query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_boy_phone VARCHAR(20);`);
+    await query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_boy_vehicle VARCHAR(50);`);
+    await query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_boy_latitude NUMERIC(9, 6);`);
+    await query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_boy_longitude NUMERIC(9, 6);`);
+
+    // User Addresses Table
     await query(`
-      ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_otp VARCHAR(10);
+      CREATE TABLE IF NOT EXISTS user_addresses (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        address_line VARCHAR(255) NOT NULL,
+        latitude NUMERIC(9, 6),
+        longitude NUMERIC(9, 6),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Favorites Table
+    await query(`
+      CREATE TABLE IF NOT EXISTS favorite_restaurants (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        restaurant_id INTEGER REFERENCES restaurants(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, restaurant_id)
+      );
+    `);
+
+    // Withdrawals Table
+    await query(`
+      CREATE TABLE IF NOT EXISTS withdrawals (
+        id SERIAL PRIMARY KEY,
+        restaurant_id INTEGER REFERENCES restaurants(id) ON DELETE CASCADE,
+        amount NUMERIC(10, 2) NOT NULL,
+        status VARCHAR(50) DEFAULT 'Approved',
+        payment_method VARCHAR(50) NOT NULL,
+        details VARCHAR(100),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `);
 
     const resCheck = await query('SELECT COUNT(*) FROM restaurants');
-    if (parseInt(resCheck.rows[0].count) === 0) {
+    if (resCheck.rows.length === 0 || parseInt(resCheck.rows[0].count) === 0) {
       await seedRestaurants();
     }
+
+    // Seed test accounts
+    const firstRes = await query('SELECT id FROM restaurants ORDER BY id ASC LIMIT 1');
+    const firstResId = firstRes.rows.length > 0 ? firstRes.rows[0].id : null;
+
+    await query(`
+      INSERT INTO users (name, email, password_hash, role, restaurant_id)
+      VALUES 
+        ('Zomato Admin', 'admin@zomato.com', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'admin', NULL),
+        ('Bistro Owner', 'owner@zomato.com', '43a0d17178a9d26c9e0fe9a74b0b45e38d32f27aed887a008a54bf6e033bf7b9', 'restaurant', $1),
+        ('John Customer', 'customer@zomato.com', 'b041c0aeb35bb0fa4aa668ca5a920b590196fdaf9a00eb852c9b7f4d123cc6d6', 'user', NULL)
+      ON CONFLICT (email) DO UPDATE SET 
+        name = EXCLUDED.name, 
+        password_hash = EXCLUDED.password_hash, 
+        role = EXCLUDED.role, 
+        restaurant_id = COALESCE(users.restaurant_id, EXCLUDED.restaurant_id);
+    `, [firstResId]);
+    console.log('[DB] Seeding of test accounts completed.');
+
   } catch (error) {
     console.error('Error during database initialization:', error.message);
   }
@@ -115,6 +179,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/restaurants', require('./routes/restaurants'));
 app.use('/api/reviews', require('./routes/reviews'));
 app.use('/api/orders', require('./routes/orders'));
+app.use('/api/user', require('./routes/user'));
 
 const options = {
   definition: {

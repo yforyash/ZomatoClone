@@ -129,3 +129,114 @@ export async function confirmStripePayment(sessionId, orderId) {
   });
   return await res.json();
 }
+
+export async function fetchAddresses() {
+  const res = await fetch(`${BASE_URL}/user/addresses`, {
+    headers: {
+      'x-user-id': localStorage.getItem('z_user') 
+        ? JSON.parse(localStorage.getItem('z_user')).id 
+        : 'Anonymous'
+    }
+  });
+  return await res.json();
+}
+
+export async function addAddress(address_line, latitude, longitude) {
+  const res = await fetch(`${BASE_URL}/user/addresses`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-id': localStorage.getItem('z_user') 
+        ? JSON.parse(localStorage.getItem('z_user')).id 
+        : 'Anonymous'
+    },
+    body: JSON.stringify({ address_line, latitude, longitude })
+  });
+  return await res.json();
+}
+
+export async function deleteAddress(id) {
+  const res = await fetch(`${BASE_URL}/user/addresses/${id}`, {
+    method: 'DELETE',
+    headers: {
+      'x-user-id': localStorage.getItem('z_user') 
+        ? JSON.parse(localStorage.getItem('z_user')).id 
+        : 'Anonymous'
+    }
+  });
+  return await res.json();
+}
+
+export async function fetchFavorites() {
+  const res = await fetch(`${BASE_URL}/user/favorites`, {
+    headers: {
+      'x-user-id': localStorage.getItem('z_user') 
+        ? JSON.parse(localStorage.getItem('z_user')).id 
+        : 'Anonymous'
+    }
+  });
+  return await res.json();
+}
+
+export async function toggleFavorite(restaurant_id) {
+  const res = await fetch(`${BASE_URL}/user/favorites`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-id': localStorage.getItem('z_user') 
+        ? JSON.parse(localStorage.getItem('z_user')).id 
+        : 'Anonymous'
+    },
+    body: JSON.stringify({ restaurant_id })
+  });
+  return await res.json();
+}
+
+export async function checkFavorite(restaurantId) {
+  const res = await fetch(`${BASE_URL}/user/favorites/${restaurantId}`, {
+    headers: {
+      'x-user-id': localStorage.getItem('z_user') 
+        ? JSON.parse(localStorage.getItem('z_user')).id 
+        : 'Anonymous'
+    }
+  });
+  return await res.json();
+}
+
+export async function fetchRestaurantStats() {
+  const res = await fetch(`${BASE_URL}/orders/restaurant-stats`, {
+    headers: {
+      'x-user-id': localStorage.getItem('z_user') 
+        ? JSON.parse(localStorage.getItem('z_user')).id 
+        : 'Anonymous'
+    }
+  });
+  return await res.json();
+}
+
+export async function requestWithdrawal(amount, paymentMethod, details) {
+  const res = await fetch(`${BASE_URL}/orders/withdraw`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-id': localStorage.getItem('z_user') 
+        ? JSON.parse(localStorage.getItem('z_user')).id 
+        : 'Anonymous'
+    },
+    body: JSON.stringify({ amount, paymentMethod, details })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Withdrawal failed');
+  return data;
+}
+
+export async function fetchAdminStats() {
+  const res = await fetch(`${BASE_URL}/orders/admin-stats`, {
+    headers: {
+      'x-user-id': localStorage.getItem('z_user') 
+        ? JSON.parse(localStorage.getItem('z_user')).id 
+        : 'Anonymous'
+    }
+  });
+  return await res.json();
+}

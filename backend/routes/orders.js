@@ -11,4 +11,9 @@ router.post('/verify-razorpay-payment', authCheck, orderController.verifyRazorpa
 router.get('/', authCheck, orderController.getOrders);
 router.get('/:id/track', orderController.trackOrder);
 
+// Dashboard routes
+router.get('/restaurant-stats', authCheck, orderController.getRestaurantDashboardStats);
+router.post('/withdraw', authCheck, orderController.withdrawEarnings);
+router.get('/admin-stats', authCheck, orderController.getAdminDashboardStats);
+
 module.exports = router;

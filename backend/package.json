@@ -12,14 +12,15 @@
     "crypto-js": "^4.2.0",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "lodash": "^4.18.1",
     "nodemailer": "^8.0.11",
     "pg": "^8.11.5",
     "razorpay": "^2.9.6",
     "stripe": "^22.2.1",
-    "twilio": "*",
-    "zod": "*",
+    "swagger-jsdoc": "*",
     "swagger-ui-express": "*",
-    "swagger-jsdoc": "*"
+    "twilio": "*",
+    "zod": "*"
   },
   "devDependencies": {
     "nodemon": "^3.1.0"

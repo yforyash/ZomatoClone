@@ -6,6 +6,7 @@ import * as Yup from 'yup';
 import confetti from 'canvas-confetti';
 import { Truck, CheckCircle2 } from 'lucide-react';
 import { UniversalMap } from '../components/UniversalMap';
+import { fetchAddresses, addAddress } from '../services/api';
 
 const handleNameChange = (e, setFieldValue) => {
   const value = e.target.value;
@@ -46,15 +47,71 @@ const handleCVVChange = (e, setFieldValue) => {
   setFieldValue('cvv', clean);
 };
 
+const luhnCheck = (val) => {
+  if (!val) return false;
+  const clean = val.replace(/\s/g, '');
+  if (clean.length !== 16) return false;
+  let sum = 0;
+  let shouldDouble = false;
+  for (let i = clean.length - 1; i >= 0; i--) {
+    let digit = parseInt(clean.charAt(i), 10);
+    if (shouldDouble) {
+      digit *= 2;
+      if (digit > 9) digit -= 9;
+    }
+    sum += digit;
+    shouldDouble = !shouldDouble;
+  }
+  return sum % 10 === 0;
+};
+
+const expiryCheck = (val) => {
+  if (!val) return false;
+  const parts = val.split('/');
+  if (parts.length !== 2) return false;
+  const month = parseInt(parts[0], 10);
+  const year = parseInt('20' + parts[1], 10);
+  if (month < 1 || month > 12) return false;
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
+  if (year < currentYear) return false;
+  if (year === currentYear && month < currentMonth) return false;
+  return true;
+};
+
+const upiCheck = (val) => {
+  if (!val) return false;
+  const upiRegex = /^[a-zA-Z0-9.-]+@[a-zA-Z0-9.-]+$/;
+  return upiRegex.test(val);
+};
+
 const CheckoutSchema = Yup.object().shape({
   name: Yup.string().required('Full Name is required'),
   phone: Yup.string().matches(/^[0-9]{10}$/, 'Must be a 10 digit number').required('Phone is required'),
   address: Yup.string().required('Delivery address is required'),
   paymentMethod: Yup.string().required('Select a payment method'),
-  cardNum: Yup.string().when('paymentMethod', { is: 'card', then: () => Yup.string().matches(/^[0-9\s]{19}$/, 'Must be a valid 16-digit card number').required('Required') }),
-  expiry: Yup.string().when('paymentMethod', { is: 'card', then: () => Yup.string().matches(/^(0[1-9]|1[0-2])\/([0-9]{2})$/, 'Must be MM/YY').required('Required') }),
-  cvv: Yup.string().when('paymentMethod', { is: 'card', then: () => Yup.string().matches(/^[0-9]{3}$/, 'Must be 3 digits').required('Required') }),
-  upiId: Yup.string().when('paymentMethod', { is: 'upi', then: () => Yup.string().required('UPI ID is required') })
+  cardNum: Yup.string().when('paymentMethod', {
+    is: 'card',
+    then: () => Yup.string()
+      .required('Card number is required')
+      .test('luhn', 'Invalid card number (failed Luhn algorithm check)', luhnCheck)
+  }),
+  expiry: Yup.string().when('paymentMethod', {
+    is: 'card',
+    then: () => Yup.string()
+      .required('Expiry date is required')
+      .matches(/^(0[1-9]|1[0-2])\/([0-9]{2})$/, 'Must be MM/YY')
+      .test('future-expiry', 'Card is expired or date is invalid', expiryCheck)
+  }),
+  cvv: Yup.string().when('paymentMethod', {
+    is: 'card',
+    then: () => Yup.string().matches(/^[0-9]{3}$/, 'Must be exactly 3 digits').required('CVV is required')
+  }),
+  upiId: Yup.string().when('paymentMethod', {
+    is: 'upi',
+    then: () => Yup.string().required('UPI ID is required').test('upi-format', 'Invalid UPI ID format (user@bank)', upiCheck)
+  })
 });
 
 const loadRazorpayScript = () => {
@@ -84,6 +141,18 @@ export function Checkout() {
 
   const eventSource = useRef(null);
   const [mockPaymentState, setMockPaymentState] = useState(null);
+
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const userStr = localStorage.getItem('z_user');
+  const user = userStr ? JSON.parse(userStr) : null;
+
+  useEffect(() => {
+    if (user) {
+      fetchAddresses().then(data => {
+        if (Array.isArray(data)) setSavedAddresses(data);
+      }).catch(err => console.error("Error loading addresses:", err));
+    }
+  }, []);
 
   const handleVerifyMockUPI = async (upiPin) => {
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
@@ -154,6 +223,14 @@ export function Checkout() {
 
   const handlePlaceOrder = async (values) => {
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+
+    if (values.saveAddress && user) {
+      try {
+        await addAddress(values.address, coords[0], coords[1]);
+      } catch (err) {
+        console.error('Failed to save address:', err);
+      }
+    }
 
     if (values.paymentMethod === 'COD') {
       try {
@@ -395,7 +472,17 @@ export function Checkout() {
           <p style={{ textAlign: 'center', padding: '3rem 0' }}>Your basket is empty.</p>
         ) : (
           <Formik
-            initialValues={{ name: '', phone: '', address: 'Connaught Place, Delhi', paymentMethod: 'COD', cardNum: '', expiry: '', cvv: '', upiId: '' }}
+            initialValues={{ 
+              name: user?.name || '', 
+              phone: user?.phone || '', 
+              address: 'Connaught Place, Delhi', 
+              paymentMethod: 'COD', 
+              cardNum: '', 
+              expiry: '', 
+              cvv: '', 
+              upiId: '',
+              saveAddress: false
+            }}
             validationSchema={CheckoutSchema}
             onSubmit={handlePlaceOrder}
           >
@@ -434,11 +521,45 @@ export function Checkout() {
                       </Field>
                       <ErrorMessage name="phone" component="div" className="form-error" />
                     </div>
+                    {savedAddresses.length > 0 && (
+                      <div className="form-group">
+                        <label className="form-label">Select Saved Address</label>
+                        <select
+                          className="form-input"
+                          style={{ marginBottom: '1rem', width: '100%' }}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === 'custom') {
+                              setFieldValue('address', '');
+                            } else {
+                              const selected = savedAddresses.find(a => a.id.toString() === val);
+                              if (selected) {
+                                setFieldValue('address', selected.address_line);
+                                if (selected.latitude && selected.longitude) {
+                                  setCoords([parseFloat(selected.latitude), parseFloat(selected.longitude)]);
+                                }
+                              }
+                            }
+                          }}
+                        >
+                          <option value="custom">-- Use custom address --</option>
+                          {savedAddresses.map(a => (
+                            <option key={a.id} value={a.id}>{a.address_line}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                     <div className="form-group">
                       <label className="form-label">Delivery Address</label>
-                      <Field name="address" className="form-input" />
+                      <Field name="address" className="form-input" placeholder="Type custom address or select one from above" />
                       <ErrorMessage name="address" component="div" className="form-error" />
                     </div>
+                    {user && (
+                      <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0.5rem 0' }}>
+                        <Field type="checkbox" name="saveAddress" id="saveAddress" style={{ width: 'auto', cursor: 'pointer' }} />
+                        <label htmlFor="saveAddress" style={{ fontSize: '0.85rem', cursor: 'pointer', userSelect: 'none' }}>Save this address to my profile</label>
+                      </div>
+                    )}
                     <p className="map-helper-text">Click the map to select drop off coordinates:</p>
                     <div style={{ height: '260px', borderRadius: '12px', overflow: 'hidden' }}>
                       <UniversalMap center={coords} onMapClick={setCoords} markerTitle="Delivery Pin" />
