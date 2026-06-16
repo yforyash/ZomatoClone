@@ -389,7 +389,8 @@ export function Checkout() {
             amount: cartTotal + 40,
             name: values.name,
             phone: values.phone,
-            cardNum: values.cardNum
+            cardNum: values.cardNum,
+            otp: data.otp
           });
           return;
         } else if (data.url) {
@@ -852,6 +853,11 @@ function MockCardOverlay({ state, onVerify, onCancel }) {
 
           <div className="mock-bank-instructions">
             A one-time passcode (OTP) has been sent to your registered mobile number ending in **{last4Phone || 'XXXX'}.
+            {state.otp && (
+              <div style={{ marginTop: '0.6rem', padding: '0.4rem', background: '#ffebee', border: '1px dashed #ef4444', borderRadius: '4px', fontWeight: '700', color: '#ef4444', textAlign: 'center', fontSize: '0.9rem' }}>
+                [SANDBOX OTP] Code: {state.otp}
+              </div>
+            )}
           </div>
 
           <div className="mock-bank-input-sec">

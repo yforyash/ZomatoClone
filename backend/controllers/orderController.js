@@ -190,7 +190,7 @@ async function createCheckoutSession(req, res) {
         }
       }
 
-      return res.json({ mockRedirect: true, orderId: order.id });
+      return res.json({ mockRedirect: true, orderId: order.id, otp: paymentOtp });
     }
 
     const lineItems = items.map(item => ({
