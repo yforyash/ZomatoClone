@@ -24,14 +24,53 @@ async function createOrder(req, res) {
       finalResId = items[0].restaurant_id;
     }
 
+    let finalPaymentStatus = payment_status || 'Pending';
+
+    if (payment_method === 'wallet') {
+      if (!userId) {
+        return res.status(401).json({ error: 'You must be logged in to pay using wallet.' });
+      }
+      
+      const { query } = require('../config/db');
+      await query('BEGIN');
+      
+      const userRes = await query('SELECT wallet_balance FROM users WHERE id = $1 FOR UPDATE', [userId]);
+      const user = userRes.rows[0];
+      if (!user) {
+        await query('ROLLBACK');
+        return res.status(404).json({ error: 'User not found.' });
+      }
+      
+      const balance = parseFloat(user.wallet_balance || 0);
+      const amount = parseFloat(total_price);
+      
+      if (balance < amount) {
+        await query('ROLLBACK');
+        return res.status(400).json({ error: `Insufficient wallet balance. You have ₹${balance.toFixed(2)}, but the order total is ₹${amount.toFixed(2)}.` });
+      }
+      
+      // Deduct wallet balance
+      await query('UPDATE users SET wallet_balance = wallet_balance - $1 WHERE id = $2', [amount, userId]);
+      
+      // Log wallet transaction
+      await query(
+        `INSERT INTO wallet_transactions (user_id, amount, type, description)
+         VALUES ($1, $2, 'Payment', $3)`,
+        [userId, -amount, `Payment for order of items from restaurant`]
+      );
+      
+      await query('COMMIT');
+      finalPaymentStatus = 'Paid';
+    }
+
     const order = await orderService.insertOrder({
       items,
       totalPrice: total_price,
       address,
       latitude,
       longitude,
-      paymentMethod: payment_method,
-      paymentStatus: payment_status,
+      paymentMethod: payment_method === 'wallet' ? 'Wallet' : payment_method,
+      paymentStatus: finalPaymentStatus,
       customerName: customer_name,
       customerPhone: customer_phone,
       userId,
@@ -40,6 +79,10 @@ async function createOrder(req, res) {
     
     res.status(201).json(order);
   } catch (err) {
+    if (req.body.payment_method === 'wallet') {
+      const { query } = require('../config/db');
+      await query('ROLLBACK').catch(() => {});
+    }
     res.status(500).json({ error: err.message });
   }
 }
@@ -400,6 +443,28 @@ async function getAdminDashboardStats(req, res) {
   }
 }
 
+async function updateOrderStatus(req, res) {
+  try {
+    const orderId = parseInt(req.params.id);
+    const { status } = req.body;
+    const userId = parseUserId(req);
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const user = await authService.getUserById(userId);
+    if (!user || (user.role !== 'restaurant' && user.role !== 'admin')) {
+      return res.status(403).json({ error: 'Access denied: Only restaurant owners and admins can update order status.' });
+    }
+
+    await orderService.updateOrderStatus(orderId, status);
+    res.json({ success: true, message: `Order status updated successfully to ${status}` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
 module.exports = {
   createOrder,
   getOrders,
@@ -410,5 +475,6 @@ module.exports = {
   verifyRazorpayPayment,
   getRestaurantDashboardStats,
   withdrawEarnings,
-  getAdminDashboardStats
+  getAdminDashboardStats,
+  updateOrderStatus
 };

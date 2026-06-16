@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Formik, Form, Field } from 'formik';
 import CryptoJS from 'crypto-js';
 import { ShieldAlert, CheckCircle2 } from 'lucide-react';
-import { loginUser, registerUser, forgotPassword, resetPassword } from '../services/api';
+import { loginUser, registerUser, forgotPassword, resetPassword, fetchRestaurants } from '../services/api';
 
 export function Auth() {
   const navigate = useNavigate();
@@ -11,6 +11,7 @@ export function Auth() {
   const [mode, setMode] = useState('login');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [restaurants, setRestaurants] = useState([]);
 
   const queryParams = new URLSearchParams(location.search);
   const token = queryParams.get('token');
@@ -19,6 +20,18 @@ export function Auth() {
   useEffect(() => {
     if (token && email) setMode('reset');
   }, [token, email]);
+
+  useEffect(() => {
+    const loadRestaurants = async () => {
+      try {
+        const res = await fetchRestaurants(1, '', false);
+        setRestaurants(res?.data || res || []);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    loadRestaurants();
+  }, []);
 
   const hash = p => CryptoJS.SHA256(p).toString(CryptoJS.enc.Hex);
 
@@ -63,23 +76,48 @@ export function Auth() {
           <div>
             <h3>Register</h3>
             <Formik
-              initialValues={{ name: '', email: '', password: '' }}
+              initialValues={{ name: '', email: '', password: '', role: 'user', restaurantId: '' }}
               onSubmit={async (values, { setSubmitting }) => {
                 setError('');
                 try {
-                  await registerUser(values.name, values.email, hash(values.password));
+                  const rId = values.role === 'restaurant' && values.restaurantId ? parseInt(values.restaurantId) : null;
+                  await registerUser(values.name, values.email, hash(values.password), values.role, rId);
                   setSuccess('Registration successful! Please login.');
                   setMode('login');
                 } catch (e) { setError(e.message); }
                 setSubmitting(false);
               }}
             >
-              <Form>
-                <div className="form-group"><label className="form-label">Name</label><Field name="name" className="form-input" required /></div>
-                <div className="form-group"><label className="form-label">Email</label><Field name="email" type="email" className="form-input" required /></div>
-                <div className="form-group"><label className="form-label">Password</label><Field name="password" type="password" className="form-input" required /></div>
-                <button type="submit" className="checkout-btn">Register</button>
-              </Form>
+              {({ values }) => (
+                <Form>
+                  <div className="form-group"><label className="form-label">Name</label><Field name="name" className="form-input" required /></div>
+                  <div className="form-group"><label className="form-label">Email</label><Field name="email" type="email" className="form-input" required /></div>
+                  <div className="form-group"><label className="form-label">Password</label><Field name="password" type="password" className="form-input" required /></div>
+                  
+                  <div className="form-group">
+                    <label className="form-label">Role</label>
+                    <Field as="select" name="role" className="form-input">
+                      <option value="user">Customer</option>
+                      <option value="restaurant">Restaurant Owner</option>
+                      <option value="admin">Admin</option>
+                    </Field>
+                  </div>
+
+                  {values.role === 'restaurant' && (
+                    <div className="form-group">
+                      <label className="form-label">Select Your Restaurant (Optional)</label>
+                      <Field as="select" name="restaurantId" className="form-input">
+                        <option value="">-- Claim / Create Later --</option>
+                        {Array.isArray(restaurants) && restaurants.map(r => (
+                          <option key={r.id} value={r.id}>{r.name}</option>
+                        ))}
+                      </Field>
+                    </div>
+                  )}
+
+                  <button type="submit" className="checkout-btn">Register</button>
+                </Form>
+              )}
             </Formik>
             <p style={{ marginTop: '1rem', textAlign: 'center' }}>Member? <span style={{ color: 'var(--accent)', cursor: 'pointer' }} onClick={() => setMode('login')}>Login</span></p>
           </div>

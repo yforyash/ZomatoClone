@@ -10,6 +10,7 @@ router.post('/create-razorpay-order', authCheck, orderController.createRazorpayO
 router.post('/verify-razorpay-payment', authCheck, orderController.verifyRazorpayPayment);
 router.get('/', authCheck, orderController.getOrders);
 router.get('/:id/track', orderController.trackOrder);
+router.put('/:id/status', authCheck, orderController.updateOrderStatus);
 
 // Dashboard routes
 router.get('/restaurant-stats', authCheck, orderController.getRestaurantDashboardStats);

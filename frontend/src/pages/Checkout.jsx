@@ -6,7 +6,7 @@ import * as Yup from 'yup';
 import confetti from 'canvas-confetti';
 import { Truck, CheckCircle2 } from 'lucide-react';
 import { UniversalMap } from '../components/UniversalMap';
-import { fetchAddresses, addAddress } from '../services/api';
+import { fetchAddresses, addAddress, fetchProfile } from '../services/api';
 
 const handleNameChange = (e, setFieldValue) => {
   const value = e.target.value;
@@ -145,12 +145,81 @@ export function Checkout() {
   const [savedAddresses, setSavedAddresses] = useState([]);
   const userStr = localStorage.getItem('z_user');
   const user = userStr ? JSON.parse(userStr) : null;
+  const [profile, setProfile] = useState(user);
+
+  const [cardBrand, setCardBrand] = useState('unknown');
+  const [cardValid, setCardValid] = useState(null);
+  const [expiryValid, setExpiryValid] = useState(null);
+  const [cvvValid, setCvvValid] = useState(null);
+
+  const [upiValid, setUpiValid] = useState(null);
+  const [upiAuthStatus, setUpiAuthStatus] = useState('idle'); // 'idle' | 'checking' | 'verified' | 'failed'
+  const upiTimeoutRef = useRef(null);
+
+  const getCardBrand = (number) => {
+    const clean = number.replace(/\D/g, '');
+    if (clean.startsWith('4')) return 'visa';
+    if (/^5[1-5]/.test(clean) || /^2[2-7]/.test(clean)) return 'mastercard';
+    if (/^3[47]/.test(clean)) return 'amex';
+    if (/^(508[5-9]|6521|60[6-8])/.test(clean)) return 'rupay';
+    return 'unknown';
+  };
+
+  const validateCardNumber = (number) => {
+    const clean = number.replace(/\D/g, '');
+    const brand = getCardBrand(clean);
+    setCardBrand(brand);
+    if (clean.length === 16) {
+      const isValid = luhnCheck(clean);
+      setCardValid(isValid);
+      return isValid;
+    } else {
+      setCardValid(false);
+      return false;
+    }
+  };
+
+  const validateExpiry = (exp) => {
+    const isValid = expiryCheck(exp);
+    setExpiryValid(isValid);
+    return isValid;
+  };
+
+  const validateCVV = (cvv) => {
+    const isValid = /^[0-9]{3}$/.test(cvv);
+    setCvvValid(isValid);
+    return isValid;
+  };
+
+  const validateUPI = (val) => {
+    if (upiTimeoutRef.current) clearTimeout(upiTimeoutRef.current);
+    
+    const isFormatValid = upiCheck(val);
+    if (!isFormatValid) {
+      setUpiValid(false);
+      setUpiAuthStatus('failed');
+      return;
+    }
+    
+    setUpiValid(null);
+    setUpiAuthStatus('checking');
+    
+    upiTimeoutRef.current = setTimeout(() => {
+      setUpiValid(true);
+      setUpiAuthStatus('verified');
+    }, 500);
+  };
 
   useEffect(() => {
     if (user) {
       fetchAddresses().then(data => {
         if (Array.isArray(data)) setSavedAddresses(data);
       }).catch(err => console.error("Error loading addresses:", err));
+
+      fetchProfile().then(data => {
+        setProfile(data);
+        localStorage.setItem('z_user', JSON.stringify(data));
+      }).catch(err => console.error("Error loading profile:", err));
     }
   }, []);
 
@@ -232,11 +301,16 @@ export function Checkout() {
       }
     }
 
+    const headers = { 'Content-Type': 'application/json' };
+    if (user) {
+      headers['x-user-id'] = user.id.toString();
+    }
+
     if (values.paymentMethod === 'COD') {
       try {
         const response = await fetch(`${API_URL}/api/orders`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: headers,
           body: JSON.stringify({
             items: cartItems,
             total_price: cartTotal + 40,
@@ -260,6 +334,44 @@ export function Checkout() {
         alert('Order checkout failed');
         setStep(1);
       }
+    } else if (values.paymentMethod === 'wallet') {
+      try {
+        setStep(2);
+        setGatewayMsg('Deducting from your Zomato Wallet...');
+        const response = await fetch(`${API_URL}/api/orders`, {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify({
+            items: cartItems,
+            total_price: cartTotal + 40,
+            address: values.address,
+            latitude: coords[0],
+            longitude: coords[1],
+            payment_method: 'wallet',
+            payment_status: 'Paid',
+            customer_name: values.name,
+            customer_phone: values.phone
+          }),
+        });
+
+        const order = await response.json();
+        if (!response.ok) {
+          throw new Error(order.error || 'Wallet payment failed');
+        }
+
+        const updatedProfile = await fetchProfile();
+        setProfile(updatedProfile);
+        localStorage.setItem('z_user', JSON.stringify(updatedProfile));
+
+        setOrderId(order.id);
+        setStep(3);
+        clearCart();
+        startTracking(order.id);
+        confetti({ particleCount: 80, spread: 60 });
+      } catch (e) {
+        alert(e.message || 'Wallet payment failed');
+        setStep(1);
+      }
     } else if (values.paymentMethod === 'upi') {
       try {
         setStep(2);
@@ -267,7 +379,7 @@ export function Checkout() {
 
         const response = await fetch(`${API_URL}/api/orders/create-razorpay-order`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: headers,
           body: JSON.stringify({
             items: cartItems,
             total_price: cartTotal + 40,
@@ -313,7 +425,7 @@ export function Checkout() {
               try {
                 const verifyRes = await fetch(`${API_URL}/api/orders/verify-razorpay-payment`, {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
+                  headers: headers,
                   body: JSON.stringify({
                     razorpayOrderId: res.razorpay_order_id,
                     razorpayPaymentId: res.razorpay_payment_id,
@@ -368,7 +480,7 @@ export function Checkout() {
 
         const response = await fetch(`${API_URL}/api/orders/create-checkout-session`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: headers,
           body: JSON.stringify({
             items: cartItems,
             total_price: cartTotal + 40,
@@ -569,21 +681,47 @@ export function Checkout() {
 
                   <div className="step-card" style={{ marginTop: '1.5rem' }}>
                     <h3>2. Choose Payment Option</h3>
-                    <div className="review-tags" style={{ marginTop: '1rem', gap: '1rem' }}>
+                    <div className="review-tags" style={{ marginTop: '1rem', gap: '1rem', flexWrap: 'wrap' }}>
                       <button type="button" className={`filter-btn ${values.paymentMethod === 'COD' ? 'active' : ''}`} onClick={() => setFieldValue('paymentMethod', 'COD')}>Cash on Delivery (COD)</button>
                       <button type="button" className={`filter-btn ${values.paymentMethod === 'upi' ? 'active' : ''}`} onClick={() => setFieldValue('paymentMethod', 'upi')}>UPI Apps</button>
                       <button type="button" className={`filter-btn ${values.paymentMethod === 'card' ? 'active' : ''}`} onClick={() => setFieldValue('paymentMethod', 'card')}>Credit/Debit Cards</button>
+                      {profile && (
+                        <button type="button" className={`filter-btn ${values.paymentMethod === 'wallet' ? 'active' : ''}`} onClick={() => setFieldValue('paymentMethod', 'wallet')}>
+                          Wallet (Balance: ₹{parseFloat(profile.wallet_balance || 0).toFixed(2)})
+                        </button>
+                      )}
                     </div>
 
                     {values.paymentMethod === 'upi' && (
                       <div className="form-group" style={{ marginTop: '1.2rem' }}>
                         <label className="form-label">Enter UPI ID</label>
-                        <Field name="upiId" className="form-input" placeholder="e.g. username@okhdfcbank" />
+                        <Field name="upiId">
+                          {({ field, form }) => (
+                            <div style={{ position: 'relative' }}>
+                              <input
+                                {...field}
+                                type="text"
+                                className="form-input"
+                                placeholder="e.g. username@okhdfcbank"
+                                onChange={(e) => {
+                                  form.setFieldValue('upiId', e.target.value);
+                                  validateUPI(e.target.value);
+                                }}
+                                style={{ paddingRight: '2.5rem' }}
+                              />
+                              <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
+                                {upiAuthStatus === 'checking' && <span className="spinner" style={{ width: '16px', height: '16px', borderWidth: '2px', margin: 0 }}></span>}
+                                {upiAuthStatus === 'verified' && <span style={{ color: 'var(--veg-color)', fontSize: '1.1rem', fontWeight: 'bold' }}>✓ Verified</span>}
+                                {upiAuthStatus === 'failed' && <span style={{ color: 'var(--nonveg-color)', fontSize: '1.1rem', fontWeight: 'bold' }}>✗ Invalid format</span>}
+                              </div>
+                            </div>
+                          )}
+                        </Field>
                         <ErrorMessage name="upiId" component="div" className="form-error" />
                         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.8rem' }}>
-                          <button type="button" className="filter-btn" onClick={() => setFieldValue('upiId', '9999999999@gpay')}>Google Pay</button>
-                          <button type="button" className="filter-btn" onClick={() => setFieldValue('upiId', '9999999999@ybl')}>PhonePe</button>
-                          <button type="button" className="filter-btn" onClick={() => setFieldValue('upiId', '9999999999@paytm')}>Paytm</button>
+                          <button type="button" className="filter-btn" onClick={() => { setFieldValue('upiId', '9999999999@gpay'); validateUPI('9999999999@gpay'); }}>Google Pay</button>
+                          <button type="button" className="filter-btn" onClick={() => { setFieldValue('upiId', '9999999999@ybl'); validateUPI('9999999999@ybl'); }}>PhonePe</button>
+                          <button type="button" className="filter-btn" onClick={() => { setFieldValue('upiId', '9999999999@paytm'); validateUPI('9999999999@paytm'); }}>Paytm</button>
                         </div>
                       </div>
                     )}
@@ -591,16 +729,48 @@ export function Checkout() {
                     {values.paymentMethod === 'card' && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1.2rem' }}>
                         <div className="form-group">
-                          <label className="form-label">Card Number</label>
+                          <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>Card Number</span>
+                            {cardBrand !== 'unknown' && (
+                              <span style={{ 
+                                textTransform: 'uppercase', 
+                                fontSize: '0.7rem', 
+                                padding: '0.1rem 0.4rem', 
+                                borderRadius: '4px',
+                                fontWeight: 700,
+                                color: 'white',
+                                backgroundColor: 
+                                  cardBrand === 'visa' ? '#1a1f71' : 
+                                  cardBrand === 'mastercard' ? '#eb001b' : 
+                                  cardBrand === 'amex' ? '#007bc1' : 
+                                  cardBrand === 'rupay' ? '#00549c' : '#777'
+                              }}>
+                                {cardBrand}
+                              </span>
+                            )}
+                          </label>
                           <Field name="cardNum">
                             {({ field, form }) => (
-                              <input
-                                {...field}
-                                type="text"
-                                className="form-input"
-                                placeholder="XXXX XXXX XXXX XXXX"
-                                onChange={(e) => handleCardNumChange(e, form.setFieldValue)}
-                              />
+                              <div style={{ position: 'relative' }}>
+                                <input
+                                  {...field}
+                                  type="text"
+                                  className="form-input"
+                                  placeholder="XXXX XXXX XXXX XXXX"
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    const clean = val.replace(/\D/g, '').substring(0, 16);
+                                    const formatted = clean.match(/.{1,4}/g)?.join(' ') || '';
+                                    form.setFieldValue('cardNum', formatted);
+                                    validateCardNumber(clean);
+                                  }}
+                                  style={{ paddingRight: '2.5rem' }}
+                                />
+                                <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
+                                  {cardValid === true && <span style={{ color: 'var(--veg-color)', fontSize: '1.1rem', fontWeight: 'bold' }}>✓</span>}
+                                  {cardValid === false && <span style={{ color: 'var(--nonveg-color)', fontSize: '1.1rem', fontWeight: 'bold' }}>✗</span>}
+                                </div>
+                              </div>
                             )}
                           </Field>
                           <ErrorMessage name="cardNum" component="div" className="form-error" />
@@ -610,13 +780,33 @@ export function Checkout() {
                             <label className="form-label">Expiry (MM/YY)</label>
                             <Field name="expiry">
                               {({ field, form }) => (
-                                <input
-                                  {...field}
-                                  type="text"
-                                  className="form-input"
-                                  placeholder="MM/YY"
-                                  onChange={(e) => handleExpiryChange(e, form.setFieldValue)}
-                                />
+                                <div style={{ position: 'relative' }}>
+                                  <input
+                                    {...field}
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="MM/YY"
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      const clean = val.replace(/\D/g, '').substring(0, 4);
+                                      let formatted = '';
+                                      if (clean.length > 0) {
+                                        if (clean.length <= 2) {
+                                          formatted = clean;
+                                        } else {
+                                          formatted = `${clean.slice(0, 2)}/${clean.slice(2, 4)}`;
+                                        }
+                                      }
+                                      form.setFieldValue('expiry', formatted);
+                                      validateExpiry(formatted);
+                                    }}
+                                    style={{ paddingRight: '2.5rem' }}
+                                  />
+                                  <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
+                                    {expiryValid === true && <span style={{ color: 'var(--veg-color)', fontSize: '1.1rem', fontWeight: 'bold' }}>✓</span>}
+                                    {expiryValid === false && <span style={{ color: 'var(--nonveg-color)', fontSize: '1.1rem', fontWeight: 'bold' }}>✗</span>}
+                                  </div>
+                                </div>
                               )}
                             </Field>
                             <ErrorMessage name="expiry" component="div" className="form-error" />
@@ -625,13 +815,25 @@ export function Checkout() {
                             <label className="form-label">CVV</label>
                             <Field name="cvv">
                               {({ field, form }) => (
-                                <input
-                                  {...field}
-                                  type="password"
-                                  className="form-input"
-                                  placeholder="XXX"
-                                  onChange={(e) => handleCVVChange(e, form.setFieldValue)}
-                                />
+                                <div style={{ position: 'relative' }}>
+                                  <input
+                                    {...field}
+                                    type="password"
+                                    className="form-input"
+                                    placeholder="XXX"
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      const clean = val.replace(/\D/g, '').substring(0, 3);
+                                      form.setFieldValue('cvv', clean);
+                                      validateCVV(clean);
+                                    }}
+                                    style={{ paddingRight: '2.5rem' }}
+                                  />
+                                  <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
+                                    {cvvValid === true && <span style={{ color: 'var(--veg-color)', fontSize: '1.1rem', fontWeight: 'bold' }}>✓</span>}
+                                    {cvvValid === false && <span style={{ color: 'var(--nonveg-color)', fontSize: '1.1rem', fontWeight: 'bold' }}>✗</span>}
+                                  </div>
+                                </div>
                               )}
                             </Field>
                             <ErrorMessage name="cvv" component="div" className="form-error" />
@@ -658,8 +860,23 @@ export function Checkout() {
                       <div className="summary-row"><span>Basket Total</span><span>₹{cartTotal}</span></div>
                       <div className="summary-row"><span>Delivery Fee</span><span>₹40</span></div>
                       <div className="summary-row total"><span>Grand Total</span><span>₹{cartTotal + 40}</span></div>
-                      <button type="submit" disabled={isSubmitting} className="checkout-btn" style={{ padding: '0.9rem', fontSize: '1rem' }}>
-                        {values.paymentMethod === 'COD' ? 'Place COD Order' : 'Pay & Place Order'}
+                      <button 
+                        type="submit" 
+                        disabled={
+                          isSubmitting ||
+                          (values.paymentMethod === 'card' && (!cardValid || !expiryValid || !cvvValid)) ||
+                          (values.paymentMethod === 'upi' && upiAuthStatus !== 'verified') ||
+                          (values.paymentMethod === 'wallet' && (!profile || (cartTotal + 40 > parseFloat(profile.wallet_balance))))
+                        } 
+                        className="checkout-btn" 
+                        style={{ padding: '0.9rem', fontSize: '1rem' }}
+                      >
+                        {values.paymentMethod === 'wallet' && profile && (cartTotal + 40 > parseFloat(profile.wallet_balance))
+                          ? 'Insufficient Wallet Balance'
+                          : values.paymentMethod === 'COD' 
+                            ? 'Place COD Order' 
+                            : 'Pay & Place Order'
+                        }
                       </button>
                     </div>
                   </div>

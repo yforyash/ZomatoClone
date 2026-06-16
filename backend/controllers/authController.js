@@ -4,14 +4,14 @@ const emailService = require('../services/emailService');
 
 async function register(req, res) {
   try {
-    const { name, email, passwordHash } = req.body;
+    const { name, email, passwordHash, role, restaurantId } = req.body;
     
     const exists = await authService.getUserByEmail(email);
     if (exists) {
       return res.status(400).json({ error: 'Email already registered' });
     }
 
-    const user = await authService.createUser(name, email, passwordHash);
+    const user = await authService.createUser(name, email, passwordHash, role || 'user', restaurantId || null);
     res.status(201).json(user);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -28,7 +28,7 @@ async function login(req, res) {
       return res.status(400).json({ error: 'Invalid email or password' });
     }
     
-    res.json({ id: user.id, name: user.name, email: user.email, role: user.role, restaurant_id: user.restaurant_id });
+    res.json({ id: user.id, name: user.name, email: user.email, role: user.role, restaurant_id: user.restaurant_id, wallet_balance: user.wallet_balance });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -77,9 +77,33 @@ async function resetPassword(req, res) {
   }
 }
 
+async function getProfile(req, res) {
+  try {
+    const userId = req.headers['x-user-id'];
+    if (!userId || userId === 'Anonymous') {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const user = await authService.getUserById(parseInt(userId));
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      restaurant_id: user.restaurant_id,
+      wallet_balance: user.wallet_balance
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
 module.exports = {
   register,
   login,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  getProfile
 };

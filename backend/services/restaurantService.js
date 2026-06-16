@@ -32,8 +32,13 @@ async function getRestaurantById(id) {
   return result.rows[0];
 }
 
-async function getRestaurantMenu(restaurantId) {
-  const result = await query('SELECT * FROM menu_items WHERE restaurant_id = $1 ORDER BY id ASC', [restaurantId]);
+async function getRestaurantMenu(restaurantId, includeUnapproved = false) {
+  let queryText = 'SELECT * FROM menu_items WHERE restaurant_id = $1';
+  if (!includeUnapproved) {
+    queryText += " AND status = 'approved'";
+  }
+  queryText += ' ORDER BY id ASC';
+  const result = await query(queryText, [restaurantId]);
   return result.rows;
 }
 

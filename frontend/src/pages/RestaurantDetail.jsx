@@ -116,6 +116,7 @@ export function RestaurantDetail() {
 
   const userStr = localStorage.getItem('z_user');
   const user = userStr ? JSON.parse(userStr) : null;
+  const userRole = user?.role || 'user';
 
   const checkFavStatus = async () => {
     if (user) {
@@ -146,7 +147,12 @@ export function RestaurantDetail() {
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
       const resData = await (await fetch(`${API_URL}/api/restaurants/${id}`)).json();
       setRestaurant(resData);
-      const mData = await (await fetch(`${API_URL}/api/restaurants/${id}/menu`)).json();
+      const loggedUser = localStorage.getItem('z_user') ? JSON.parse(localStorage.getItem('z_user')) : null;
+      const mData = await (await fetch(`${API_URL}/api/restaurants/${id}/menu`, {
+        headers: {
+          'x-user-id': loggedUser ? loggedUser.id.toString() : 'Anonymous'
+        }
+      })).json();
       setMenu(Array.isArray(mData) ? mData : []);
       await fetchReviews();
     } catch (e) {
@@ -268,19 +274,47 @@ export function RestaurantDetail() {
                       <div className="menu-list">
                         {categories[cat].map(item => {
                           const cartItem = cartItems.find(ci => ci.id === item.id);
+                          const isOwnerOrAdmin = userRole === 'admin' || (userRole === 'restaurant' && user?.restaurant_id === restaurant?.id);
                           return (
                             <div key={item.id} className="menu-item-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', padding: '1rem 0', borderBottom: '1px solid var(--border-color)' }}>
                               <div className="item-info" style={{ flex: 1 }}>
                                 <span className={`item-veg-indicator ${!item.is_veg ? 'nonveg' : ''}`}><span className="item-veg-dot"></span></span>
                                 {item.is_bestseller && <span style={{ background: '#f5a623', color: 'black', fontSize: '0.7rem', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: 700, marginLeft: '0.5rem', verticalAlign: 'middle' }}>★ BESTSELLER</span>}
-                                <h4 className="item-name" style={{ marginTop: '0.3rem' }}>{item.name}</h4>
-                                <p className="item-price">₹{item.price}</p>
-                                <p className="item-desc">{item.description}</p>
+                                <h4 className="item-name" style={{ marginTop: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  {item.name}
+                                  {item.status && item.status !== 'approved' && (
+                                    <span style={{ 
+                                      fontSize: '0.65rem', 
+                                      padding: '0.15rem 0.4rem', 
+                                      borderRadius: '4px', 
+                                      fontWeight: 600, 
+                                      textTransform: 'uppercase',
+                                      backgroundColor: item.status === 'pending' ? 'rgba(245, 166, 35, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                      color: item.status === 'pending' ? '#f5a623' : '#ef4444',
+                                      border: `1px solid ${item.status === 'pending' ? '#f5a623' : '#ef4444'}`
+                                    }}>
+                                      {item.status}
+                                    </span>
+                                  )}
+                                </h4>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+                                  <span className="item-price" style={{ fontSize: '1.05rem', fontWeight: 600 }}>₹{item.price}</span>
+                                  {isOwnerOrAdmin && item.owner_price && (
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                      Proposed: ₹{parseFloat(item.owner_price).toFixed(2)} + 10% Zomato fee (₹{(parseFloat(item.owner_price) * 0.1).toFixed(2)})
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="item-desc" style={{ marginTop: '0.4rem' }}>{item.description}</p>
                               </div>
                               <div style={{ position: 'relative', width: '96px', height: '96px', flexShrink: 0 }}>
                                 <img src={item.image_url} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }} />
                                 <div style={{ position: 'absolute', bottom: '-8px', left: '50%', transform: 'translateX(-50%)' }}>
-                                  {cartItem ? (
+                                  {item.status && item.status !== 'approved' ? (
+                                    <div style={{ background: 'var(--border-color)', color: 'var(--text-muted)', fontSize: '0.75rem', padding: '0.3rem 0.6rem', borderRadius: '4px', whiteSpace: 'nowrap', fontWeight: 600, border: '1px solid var(--border-color)' }}>
+                                      Not Available
+                                    </div>
+                                  ) : cartItem ? (
                                     <div className="add-cart-btn" style={{ background: 'var(--accent)', color: 'white', display: 'flex', justifyContent: 'space-between', width: '72px', margin: 0, boxShadow: '0 4px 8px rgba(0,0,0,0.2)', padding: '0.2rem 0.4rem', fontSize: '0.85rem' }}>
                                       <button className="qty-btn" style={{ color: 'white' }} onClick={() => removeFromCart(item.id)}>-</button>
                                       <span>{cartItem.qty}</span>

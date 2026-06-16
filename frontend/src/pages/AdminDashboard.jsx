@@ -1,13 +1,51 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchAdminStats, fetchAdminTickets, resolveTicket, assignRider, refundOrder, fetchOrders } from '../services/api';
-import { ShieldAlert, Users, Store, DollarSign, ListOrdered, Percent, MessageSquare, AlertCircle, RefreshCw, Send, CheckCircle2 } from 'lucide-react';
+import { 
+  fetchAdminStats, 
+  fetchAdminTickets, 
+  resolveTicket, 
+  assignRider, 
+  refundOrder, 
+  fetchOrders,
+  fetchPendingDishes,
+  updateDishStatus,
+  fetchSystemAnalytics
+} from '../services/api';
+import { 
+  ShieldAlert, 
+  Users, 
+  Store, 
+  DollarSign, 
+  ListOrdered, 
+  Percent, 
+  MessageSquare, 
+  AlertCircle, 
+  RefreshCw, 
+  Send, 
+  CheckCircle2, 
+  Check, 
+  X,
+  TrendingUp
+} from 'lucide-react';
+import { 
+  ResponsiveContainer, 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend 
+} from 'recharts';
+import _ from 'lodash';
 
 export function AdminDashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [orders, setOrders] = useState([]);
   const [tickets, setTickets] = useState([]);
+  const [pendingDishes, setPendingDishes] = useState([]);
+  const [analyticsData, setAnalyticsData] = useState(null);
   const [activeTab, setActiveTab] = useState('users');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -43,6 +81,12 @@ export function AdminDashboard() {
       const ordersData = await fetchOrders();
       setOrders(Array.isArray(ordersData) ? ordersData : []);
       
+      const pendingData = await fetchPendingDishes();
+      setPendingDishes(Array.isArray(pendingData) ? pendingData : []);
+
+      const analyticalRes = await fetchSystemAnalytics();
+      setAnalyticsData(analyticalRes);
+
     } catch (err) {
       console.error('Failed to load admin stats:', err);
       setError('Failed to fetch platform administration data.');
@@ -93,6 +137,26 @@ export function AdminDashboard() {
     }
   };
 
+  const handleApproveDish = async (dishId) => {
+    try {
+      await updateDishStatus(dishId, 'approved');
+      alert('Dish approved! The 10% fee has been applied and price is generated.');
+      loadAdminData();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
+  const handleRejectDish = async (dishId) => {
+    try {
+      await updateDishStatus(dishId, 'rejected');
+      alert('Dish request rejected.');
+      loadAdminData();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   if (loading) {
     return (
       <div className="spinner-container">
@@ -115,6 +179,13 @@ export function AdminDashboard() {
     );
   }
 
+  // Map analytics for Recharts BarChart
+  const chartData = analyticsData?.restaurantSales?.map(r => ({
+    name: r.name.length > 15 ? `${r.name.substring(0, 12)}...` : r.name,
+    Sales: parseFloat(r.total_sales),
+    Commission: parseFloat(r.total_sales) * 0.10
+  })) || [];
+
   return (
     <div className="container" style={{ paddingBottom: '3rem' }}>
       {/* Header */}
@@ -122,11 +193,11 @@ export function AdminDashboard() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
           <ShieldAlert size={36} style={{ color: 'var(--accent)' }} />
           <div>
-            <h2 style={{ margin: 0 }}>Admin Administration Panel</h2>
-            <p style={{ color: 'var(--text-secondary)', margin: 0 }}>Monitor platform performance, view platform-wide financials, and review user accounts and partner restaurants.</p>
+            <h2 style={{ margin: 0 }}>Admin Panel</h2>
+            <p style={{ color: 'var(--text-secondary)', margin: 0 }}>Monitor platform performance, manage menu approvals, and review complaints.</p>
           </div>
         </div>
-        <button onClick={loadAdminData} className="filter-btn" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+        <button onClick={loadAdminData} className="filter-btn" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', border: 'none', cursor: 'pointer' }}>
           <RefreshCw size={16} /> Refresh Data
         </button>
       </div>
@@ -171,7 +242,7 @@ export function AdminDashboard() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--border)', marginBottom: '1.5rem', paddingBottom: '0.5rem', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid var(--border)', marginBottom: '1.5rem', paddingBottom: '0.5rem', flexWrap: 'wrap' }}>
         <button 
           onClick={() => setActiveTab('users')} 
           style={{
@@ -180,9 +251,9 @@ export function AdminDashboard() {
             color: activeTab === 'users' ? 'var(--accent)' : 'var(--text-secondary)',
             fontWeight: activeTab === 'users' ? '600' : '400',
             borderBottom: activeTab === 'users' ? '2px solid var(--accent)' : 'none',
-            padding: '0.5rem 1.2rem',
+            padding: '0.5rem 1rem',
             cursor: 'pointer',
-            fontSize: '1rem',
+            fontSize: '0.95rem',
             transition: 'all 0.2s ease'
           }}
         >
@@ -196,13 +267,45 @@ export function AdminDashboard() {
             color: activeTab === 'restaurants' ? 'var(--accent)' : 'var(--text-secondary)',
             fontWeight: activeTab === 'restaurants' ? '600' : '400',
             borderBottom: activeTab === 'restaurants' ? '2px solid var(--accent)' : 'none',
-            padding: '0.5rem 1.2rem',
+            padding: '0.5rem 1rem',
             cursor: 'pointer',
-            fontSize: '1rem',
+            fontSize: '0.95rem',
             transition: 'all 0.2s ease'
           }}
         >
           Registered Restaurants ({stats?.restaurants?.length || 0})
+        </button>
+        <button 
+          onClick={() => setActiveTab('approvals')} 
+          style={{
+            background: 'none',
+            border: 'none',
+            color: activeTab === 'approvals' ? 'var(--accent)' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'approvals' ? '600' : '400',
+            borderBottom: activeTab === 'approvals' ? '2px solid var(--accent)' : 'none',
+            padding: '0.5rem 1rem',
+            cursor: 'pointer',
+            fontSize: '0.95rem',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          Menu Approvals ({pendingDishes?.length || 0})
+        </button>
+        <button 
+          onClick={() => setActiveTab('analytics')} 
+          style={{
+            background: 'none',
+            border: 'none',
+            color: activeTab === 'analytics' ? 'var(--accent)' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'analytics' ? '600' : '400',
+            borderBottom: activeTab === 'analytics' ? '2px solid var(--accent)' : 'none',
+            padding: '0.5rem 1rem',
+            cursor: 'pointer',
+            fontSize: '0.95rem',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          System Analytics
         </button>
         <button 
           onClick={() => setActiveTab('complaints')} 
@@ -212,13 +315,13 @@ export function AdminDashboard() {
             color: activeTab === 'complaints' ? 'var(--accent)' : 'var(--text-secondary)',
             fontWeight: activeTab === 'complaints' ? '600' : '400',
             borderBottom: activeTab === 'complaints' ? '2px solid var(--accent)' : 'none',
-            padding: '0.5rem 1.2rem',
+            padding: '0.5rem 1rem',
             cursor: 'pointer',
-            fontSize: '1rem',
+            fontSize: '0.95rem',
             transition: 'all 0.2s ease'
           }}
         >
-          Complaints & Issues ({tickets?.length || 0})
+          Complaints ({tickets?.length || 0})
         </button>
         <button 
           onClick={() => setActiveTab('orders')} 
@@ -228,13 +331,13 @@ export function AdminDashboard() {
             color: activeTab === 'orders' ? 'var(--accent)' : 'var(--text-secondary)',
             fontWeight: activeTab === 'orders' ? '600' : '400',
             borderBottom: activeTab === 'orders' ? '2px solid var(--accent)' : 'none',
-            padding: '0.5rem 1.2rem',
+            padding: '0.5rem 1rem',
             cursor: 'pointer',
-            fontSize: '1rem',
+            fontSize: '0.95rem',
             transition: 'all 0.2s ease'
           }}
         >
-          Orders & Logistics ({orders?.length || 0})
+          Orders ({orders?.length || 0})
         </button>
       </div>
 
@@ -342,6 +445,122 @@ export function AdminDashboard() {
         </div>
       )}
 
+      {/* Menu Approvals Tab */}
+      {activeTab === 'approvals' && (
+        <div className="card" style={{ padding: '1.5rem', overflowX: 'auto' }}>
+          <h3>Pending Menu Approvals</h3>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
+            Review new dishes proposed by restaurant owners. Zomato applies a 10% fee to the proposed owner price to generate the final fixed price.
+          </p>
+
+          <table className="table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <thead>
+              <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                <th style={{ padding: '0.75rem' }}>Restaurant</th>
+                <th style={{ padding: '0.75rem' }}>Dish</th>
+                <th style={{ padding: '0.75rem' }}>Category</th>
+                <th style={{ padding: '0.75rem' }}>Proposed Owner Price</th>
+                <th style={{ padding: '0.75rem' }}>Zomato Fee (10%)</th>
+                <th style={{ padding: '0.75rem' }}>Final Cust. Price</th>
+                <th style={{ padding: '0.75rem', textAlign: 'center' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pendingDishes.length > 0 ? (
+                pendingDishes.map((dish) => {
+                  const ownerPrice = parseFloat(dish.owner_price || dish.price);
+                  const commission = ownerPrice * 0.10;
+                  const finalPrice = ownerPrice * 1.10;
+                  return (
+                    <tr key={dish.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '0.75rem', fontWeight: 600 }}>{dish.restaurant_name}</td>
+                      <td style={{ padding: '0.75rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <img src={dish.image_url} alt="" style={{ width: '36px', height: '36px', objectFit: 'cover', borderRadius: '4px' }} />
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                              <span className={`item-veg-indicator ${!dish.is_veg ? 'nonveg' : ''}`} style={{ position: 'relative', top: 0 }}><span className="item-veg-dot"></span></span>
+                              <strong>{dish.name}</strong>
+                            </div>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{dish.description}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{dish.category}</td>
+                      <td style={{ padding: '0.75rem', fontWeight: 600 }}>₹{ownerPrice.toFixed(2)}</td>
+                      <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>₹{commission.toFixed(2)}</td>
+                      <td style={{ padding: '0.75rem', color: 'var(--veg-color)', fontWeight: 600 }}>₹{finalPrice.toFixed(2)}</td>
+                      <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                        <div style={{ display: 'inline-flex', gap: '0.4rem' }}>
+                          <button className="success-btn" onClick={() => handleApproveDish(dish.id)} style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.2rem', margin: 0, border: 'none', cursor: 'pointer' }}>
+                            <Check size={14} /> Approve
+                          </button>
+                          <button className="filter-btn" onClick={() => handleRejectDish(dish.id)} style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.2rem', margin: 0, border: '1px solid #ef4444', background: 'rgba(239,68,68,0.05)', color: '#ef4444', cursor: 'pointer' }}>
+                            <X size={14} /> Reject
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan="7" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    No pending menu items to review.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Recharts Analytics Tab */}
+      {activeTab === 'analytics' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div className="analytics-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+            <div className="analytics-card" style={{ padding: '1.5rem' }}>
+              <div className="analytics-header">
+                <span className="analytics-title" style={{ fontSize: '1.1rem' }}>Platform Sales</span>
+                <TrendingUp size={24} style={{ color: 'var(--accent)' }} />
+              </div>
+              <div className="analytics-value" style={{ fontSize: '2.5rem', marginTop: '0.5rem' }}>₹{analyticsData?.totalSales?.toLocaleString('en-IN') || '0'}</div>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '0.5rem 0 0 0' }}>Cumulative orders value settled on the Zomato platform.</p>
+            </div>
+
+            <div className="analytics-card" style={{ padding: '1.5rem' }}>
+              <div className="analytics-header">
+                <span className="analytics-title" style={{ fontSize: '1.1rem' }}>Zomato Fee Revenues</span>
+                <Percent size={24} style={{ color: 'var(--veg-color)' }} />
+              </div>
+              <div className="analytics-value" style={{ fontSize: '2.5rem', marginTop: '0.5rem', color: 'var(--veg-color)' }}>₹{analyticsData?.commission?.toLocaleString('en-IN') || '0'}</div>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '0.5rem 0 0 0' }}>Commissions accumulated through the 10% Zomato listing fee.</p>
+            </div>
+          </div>
+
+          <div className="card" style={{ padding: '1.5rem' }}>
+            <h3 style={{ marginBottom: '1.5rem' }}>Restaurant Outlets Performance Chart</h3>
+            {chartData.length > 0 ? (
+              <div style={{ width: '100%', height: '320px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
+                    <XAxis dataKey="name" stroke="var(--text-secondary)" />
+                    <YAxis stroke="var(--text-secondary)" />
+                    <Tooltip contentStyle={{ background: '#18181b', border: '1px solid var(--border-color)', color: 'white' }} />
+                    <Legend />
+                    <Bar dataKey="Sales" fill="rgba(226, 55, 68, 0.7)" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="Commission" fill="#10b981" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '3rem' }}>No financial stats data to chart.</p>
+            )}
+          </div>
+        </div>
+      )}
+
       {activeTab === 'complaints' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {tickets.length > 0 ? (
@@ -373,7 +592,7 @@ export function AdminDashboard() {
                       {t.status}
                     </span>
                     {t.status === 'Open' && (
-                      <button className="success-btn" onClick={() => handleResolveTicket(t.id)} style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                      <button className="success-btn" onClick={() => handleResolveTicket(t.id)} style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.2rem', border: 'none', cursor: 'pointer' }}>
                         <CheckCircle2 size={14} /> Resolve Issue
                       </button>
                     )}
@@ -456,12 +675,12 @@ export function AdminDashboard() {
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     {order.payment_status === 'Paid' && order.status !== 'Delivered' && (
-                      <button className="filter-btn" onClick={() => handleRefundOrder(order.id)} style={{ padding: '0.4rem 1rem', fontSize: '0.8rem', border: '1px solid #ef4444', background: 'rgba(239,68,68,0.05)', color: '#ef4444', margin: 0 }}>
+                      <button className="filter-btn" onClick={() => handleRefundOrder(order.id)} style={{ padding: '0.4rem 1rem', fontSize: '0.8rem', border: '1px solid #ef4444', background: 'rgba(239,68,68,0.05)', color: '#ef4444', margin: 0, cursor: 'pointer' }}>
                         Cancel & Refund
                       </button>
                     )}
                     {order.status !== 'Delivered' && order.status !== 'Cancelled' && (
-                      <button className="checkout-btn" onClick={() => setSelectedOrderIdForRider(selectedOrderIdForRider === order.id ? null : order.id)} style={{ padding: '0.4rem 1rem', fontSize: '0.8rem', margin: 0 }}>
+                      <button className="checkout-btn" onClick={() => setSelectedOrderIdForRider(selectedOrderIdForRider === order.id ? null : order.id)} style={{ padding: '0.4rem 1rem', fontSize: '0.8rem', margin: 0, cursor: 'pointer' }}>
                         {selectedOrderIdForRider === order.id ? 'Close Panel' : 'Reassign Rider'}
                       </button>
                     )}

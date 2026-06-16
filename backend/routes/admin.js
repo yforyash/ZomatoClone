@@ -132,4 +132,84 @@ router.post('/orders/:id/refund', authCheck, verifyAdmin, async (req, res) => {
   }
 });
 
+// Get all pending dishes for approval
+router.get('/pending-dishes', authCheck, verifyAdmin, async (req, res) => {
+  try {
+    const result = await query(
+      `SELECT m.*, r.name as restaurant_name 
+       FROM menu_items m
+       JOIN restaurants r ON m.restaurant_id = r.id
+       WHERE m.status = 'pending'
+       ORDER BY m.id ASC`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Approve or reject a dish
+router.put('/dishes/:dishId', authCheck, verifyAdmin, async (req, res) => {
+  try {
+    const dishId = parseInt(req.params.dishId);
+    const { status } = req.body; // 'approved' or 'rejected'
+
+    if (status !== 'approved' && status !== 'rejected') {
+      return res.status(400).json({ error: "Invalid status. Must be 'approved' or 'rejected'." });
+    }
+
+    if (status === 'approved') {
+      const dishRes = await query('SELECT owner_price FROM menu_items WHERE id = $1', [dishId]);
+      const dish = dishRes.rows[0];
+      if (!dish) {
+        return res.status(404).json({ error: 'Dish not found' });
+      }
+      
+      const finalPrice = Math.round(parseFloat(dish.owner_price) * 1.10);
+      
+      const updateRes = await query(
+        `UPDATE menu_items SET status = 'approved', price = $1 WHERE id = $2 RETURNING *`,
+        [finalPrice, dishId]
+      );
+      res.json(updateRes.rows[0]);
+    } else {
+      const updateRes = await query(
+        `UPDATE menu_items SET status = 'rejected' WHERE id = $1 RETURNING *`,
+        [dishId]
+      );
+      res.json(updateRes.rows[0]);
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get system analytics (fees collected)
+router.get('/analytics', authCheck, verifyAdmin, async (req, res) => {
+  try {
+    const ordersRes = await query("SELECT total_price FROM orders WHERE payment_status = 'Paid'");
+    const orders = ordersRes.rows;
+    
+    const totalSales = orders.reduce((sum, o) => sum + parseFloat(o.total_price), 0);
+    const commission = totalSales * 0.10;
+    
+    const restSalesRes = await query(
+      `SELECT r.id, r.name, SUM(o.total_price) as total_sales
+       FROM orders o
+       JOIN users u ON o.user_id = u.id
+       JOIN restaurants r ON u.restaurant_id = r.id
+       WHERE o.payment_status = 'Paid'
+       GROUP BY r.id, r.name`
+    );
+    
+    res.json({
+      totalSales,
+      commission,
+      restaurantSales: restSalesRes.rows
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

@@ -5,10 +5,10 @@ async function getUserByEmail(email) {
   return result.rows[0];
 }
 
-async function createUser(name, email, passwordHash) {
+async function createUser(name, email, passwordHash, role = 'user', restaurantId = null) {
   const result = await query(
-    'INSERT INTO users (name, email, password_hash) VALUES ($1, LOWER($2), $3) RETURNING id, name, email',
-    [name, email, passwordHash]
+    'INSERT INTO users (name, email, password_hash, role, restaurant_id) VALUES ($1, LOWER($2), $3, $4, $5) RETURNING id, name, email, role, restaurant_id',
+    [name, email, passwordHash, role, restaurantId]
   );
   return result.rows[0];
 }

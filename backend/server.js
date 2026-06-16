@@ -112,6 +112,10 @@ async function initDatabase() {
     await query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_boy_latitude NUMERIC(9, 6);`);
     await query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_boy_longitude NUMERIC(9, 6);`);
 
+    await query(`ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS owner_price NUMERIC(10, 2);`);
+    await query(`ALTER TABLE menu_items ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'approved';`);
+    await query(`UPDATE menu_items SET owner_price = ROUND(price / 1.10, 2) WHERE owner_price IS NULL;`);
+
     // User Addresses Table
     await query(`
       CREATE TABLE IF NOT EXISTS user_addresses (

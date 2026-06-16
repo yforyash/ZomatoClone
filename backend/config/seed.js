@@ -1,4 +1,5 @@
 const { query } = require('./db');
+const { getFoodImageByName } = require('./imageMapper');
 
 async function seedRestaurants() {
   console.log('Generating seed data for 200 restaurants, 20 dishes each, and 7-8 reviews each...');
@@ -647,7 +648,7 @@ async function seedRestaurants() {
           is_veg: sanitized.is_veg,
           is_bestseller,
           description: sanitized.desc,
-          image_url: getFoodImage(cuisine, category, dishIdx, i)
+          image_url: getFoodImageByName(sanitized.name, category)
         });
       });
     });

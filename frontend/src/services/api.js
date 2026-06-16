@@ -69,11 +69,11 @@ export async function loginUser(email, passwordHash) {
   return data;
 }
 
-export async function registerUser(name, email, passwordHash) {
+export async function registerUser(name, email, passwordHash, role, restaurantId) {
   const res = await fetch(`${BASE_URL}/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, passwordHash }),
+    body: JSON.stringify({ name, email, passwordHash, role, restaurantId }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Registration failed');
@@ -345,6 +345,121 @@ export async function refundOrder(orderId) {
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Failed to process refund.');
+  return data;
+}
+
+export async function fetchProfile() {
+  const res = await fetch(`${BASE_URL}/auth/profile`, {
+    headers: {
+      'x-user-id': localStorage.getItem('z_user') 
+        ? JSON.parse(localStorage.getItem('z_user')).id 
+        : 'Anonymous'
+    }
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch profile.');
+  return data;
+}
+
+export async function createRestaurant(restData) {
+  const res = await fetch(`${BASE_URL}/restaurants/create`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-id': localStorage.getItem('z_user') 
+        ? JSON.parse(localStorage.getItem('z_user')).id 
+        : 'Anonymous'
+    },
+    body: JSON.stringify(restData)
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to create restaurant.');
+  return data;
+}
+
+export async function claimRestaurant(restaurantId) {
+  const res = await fetch(`${BASE_URL}/restaurants/${restaurantId}/claim`, {
+    method: 'POST',
+    headers: {
+      'x-user-id': localStorage.getItem('z_user') 
+        ? JSON.parse(localStorage.getItem('z_user')).id 
+        : 'Anonymous'
+    }
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to claim restaurant.');
+  return data;
+}
+
+export async function addRestaurantDish(restaurantId, dishData) {
+  const res = await fetch(`${BASE_URL}/restaurants/${restaurantId}/dishes`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-id': localStorage.getItem('z_user') 
+        ? JSON.parse(localStorage.getItem('z_user')).id 
+        : 'Anonymous'
+    },
+    body: JSON.stringify(dishData)
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to add dish.');
+  return data;
+}
+
+export async function fetchPendingDishes() {
+  const res = await fetch(`${BASE_URL}/admin/pending-dishes`, {
+    headers: {
+      'x-user-id': localStorage.getItem('z_user') 
+        ? JSON.parse(localStorage.getItem('z_user')).id 
+        : 'Anonymous'
+    }
+  });
+  return await res.json();
+}
+
+export async function updateDishStatus(dishId, status) {
+  const res = await fetch(`${BASE_URL}/admin/dishes/${dishId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-id': localStorage.getItem('z_user') 
+        ? JSON.parse(localStorage.getItem('z_user')).id 
+        : 'Anonymous'
+    },
+    body: JSON.stringify({ status })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to update dish status.');
+  return data;
+}
+
+export async function fetchSystemAnalytics() {
+  const res = await fetch(`${BASE_URL}/admin/analytics`, {
+    headers: {
+      'x-user-id': localStorage.getItem('z_user') 
+        ? JSON.parse(localStorage.getItem('z_user')).id 
+        : 'Anonymous'
+    }
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch analytics.');
+  return data;
+}
+
+export async function updateOrderStatus(orderId, status) {
+  const res = await fetch(`${BASE_URL}/orders/${orderId}/status`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-id': localStorage.getItem('z_user') 
+        ? JSON.parse(localStorage.getItem('z_user')).id 
+        : 'Anonymous'
+    },
+    body: JSON.stringify({ status })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to update order status.');
   return data;
 }
 
