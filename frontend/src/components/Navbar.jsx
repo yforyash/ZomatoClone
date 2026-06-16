@@ -14,8 +14,7 @@ export function Navbar() {
 
   const handleLogout = () => {
     localStorage.removeItem('z_user');
-    navigate('/login');
-    window.location.reload();
+    window.location.href = '/';
   };
 
   return (

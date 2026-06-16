@@ -15,6 +15,20 @@ export function Home() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    const userStr = localStorage.getItem('z_user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    if (user) {
+      if (user.role === 'restaurant') {
+        navigate('/restaurant-dashboard');
+        return;
+      } else if (user.role === 'admin') {
+        navigate('/admin-dashboard');
+        return;
+      }
+    }
+  }, []);
+
+  useEffect(() => {
     setPage(1);
     setHasMore(true);
     fetchData(1, true);

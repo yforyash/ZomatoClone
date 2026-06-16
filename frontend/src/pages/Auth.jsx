@@ -38,8 +38,13 @@ export function Auth() {
                 try {
                   const user = await loginUser(values.email, hash(values.password));
                   localStorage.setItem('z_user', JSON.stringify(user));
-                  navigate('/');
-                  window.location.reload();
+                  if (user.role === 'restaurant') {
+                    window.location.href = '/restaurant-dashboard';
+                  } else if (user.role === 'admin') {
+                    window.location.href = '/admin-dashboard';
+                  } else {
+                    window.location.href = '/';
+                  }
                 } catch (e) { setError(e.message); }
                 setSubmitting(false);
               }}
